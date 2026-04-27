@@ -17,7 +17,7 @@ const NAV = [
 
 export default function CustomerDashboard() {
   return (
-    <DashboardLayout role="Customer" userName="Saroj Karki" navItems={NAV}>
+    <DashboardLayout role="Customer" navItems={NAV}>
       <Routes>
         <Route index               element={<CustomerOverview />}     />
         <Route path="appointments" element={<CustomerAppointments />} />

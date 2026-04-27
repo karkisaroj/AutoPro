@@ -6,6 +6,7 @@ public class PartResponse
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string Sku { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public int Quantity { get; set; }
@@ -21,6 +22,8 @@ public class CreatePartRequest
 {
     [Required]
     public string Name { get; set; } = string.Empty;
+
+    public string Sku { get; set; } = string.Empty;
 
     [Required]
     public string Category { get; set; } = string.Empty;
@@ -43,6 +46,7 @@ public class CreatePartRequest
 public class UpdatePartRequest
 {
     public string? Name { get; set; }
+    public string? Sku { get; set; }
     public string? Category { get; set; }
     public decimal? Price { get; set; }
     public int? Quantity { get; set; }

@@ -8,12 +8,7 @@
  *   3. No changes needed in page components — they already use async/await
  */
 
-export const BASE_URL = 'https://api.autopro.local'; // ← change this when backend is ready
-
-/** Simulate network delay (remove when using real API) */
-const MOCK_DELAY_MS = 400;
-export const mockFetch = (data) =>
-  new Promise((resolve) => setTimeout(() => resolve(JSON.parse(JSON.stringify(data))), MOCK_DELAY_MS));
+export const BASE_URL = 'http://localhost:5101';
 
 /** Real API fetch helper (ready to use, just swap mockFetch → apiFetch) */
 export async function apiFetch(endpoint, options = {}) {

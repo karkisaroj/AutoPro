@@ -1,49 +1,97 @@
-import { mockFetch } from './api';
+import { apiFetch } from './api';
 
-let _parts = [
-  { id: 'PT-001', name: 'Brake Pad Set (Toyota Fortuner)',  category: 'Brakes',     price: 2800,  qty: 4,  vendor: 'NepalAuto Supplies', minQty: 10, unit: 'Set',   lastRestocked: '2026-03-15' },
-  { id: 'PT-002', name: 'Engine Oil 5W-30 Castrol (5L)',    category: 'Engine',     price: 1200,  qty: 3,  vendor: 'Lubrikant Nepal',    minQty: 10, unit: 'Bottle',lastRestocked: '2026-03-20' },
-  { id: 'PT-003', name: 'Air Filter (Honda City 2022)',      category: 'Filters',    price: 650,   qty: 7,  vendor: 'KTM Parts Hub',      minQty: 10, unit: 'Piece', lastRestocked: '2026-03-10' },
-  { id: 'PT-004', name: 'Shock Absorber Front (KIA Seltos)', category: 'Suspension', price: 9500,  qty: 15, vendor: 'AutoZone Pvt. Ltd.', minQty: 5,  unit: 'Piece', lastRestocked: '2026-02-28' },
-  { id: 'PT-005', name: 'Alternator 12V Universal',          category: 'Electrical', price: 7200,  qty: 22, vendor: 'NepalAuto Supplies', minQty: 5,  unit: 'Piece', lastRestocked: '2026-02-10' },
-  { id: 'PT-006', name: 'Spark Plug Set NGK (4pc)',          category: 'Engine',     price: 1800,  qty: 8,  vendor: 'NepalAuto Supplies', minQty: 10, unit: 'Set',   lastRestocked: '2026-03-25' },
-  { id: 'PT-007', name: 'Timing Belt (Hyundai i20)',         category: 'Engine',     price: 3400,  qty: 2,  vendor: 'AutoZone Pvt. Ltd.', minQty: 10, unit: 'Piece', lastRestocked: '2026-01-15' },
-  { id: 'PT-008', name: 'Tyre 185/65 R15 Yokohama Earth1',  category: 'Tyres',      price: 12500, qty: 40, vendor: 'Tyre World Nepal',   minQty: 20, unit: 'Piece', lastRestocked: '2026-04-01' },
-  { id: 'PT-009', name: 'Wiper Blade Set (Universal 24")',   category: 'Body',       price: 850,   qty: 18, vendor: 'KTM Parts Hub',      minQty: 10, unit: 'Set',   lastRestocked: '2026-03-05' },
-  { id: 'PT-010', name: 'Coolant Rad Guard 50/50 (1L)',      category: 'Engine',     price: 480,   qty: 25, vendor: 'Lubrikant Nepal',    minQty: 15, unit: 'Bottle',lastRestocked: '2026-04-08' },
-];
+// Backend field adapter → AdminParts.jsx expects: name, sku, category, supplier, price, quantity, minStock, unit
+const adaptPart = (p) => ({
+  id: p.id,
+  name: p.name,
+  sku: p.sku || '',
+  category: p.category,
+  supplier: p.vendorName || '',   // backend: vendorName → frontend: supplier
+  vendorId: p.vendorId,
+  price: p.price,
+  quantity: p.quantity,           // backend: quantity → frontend: quantity ✓
+  minStock: p.minQuantity,        // backend: minQuantity → frontend: minStock
+  unit: p.unit,
+  lastRestocked: p.lastRestocked ? p.lastRestocked.split('T')[0] : null,
+  isLowStock: p.isLowStock,
+});
 
-let _purchaseOrders = [
-  { id: 'PO-2035', vendor: 'NepalAuto Supplies', date: '2026-04-12', items: 5, total: 45000, status: 'Received', notes: 'Quarterly restock' },
-  { id: 'PO-2034', vendor: 'KTM Parts Hub',      date: '2026-04-08', items: 3, total: 18500, status: 'Received', notes: ''                   },
-  { id: 'PO-2033', vendor: 'AutoZone Pvt. Ltd.', date: '2026-04-05', items: 7, total: 62000, status: 'Pending',  notes: 'Urgent — low stock' },
-  { id: 'PO-2032', vendor: 'Tyre World Nepal',   date: '2026-03-28', items: 20,total: 250000,status: 'Received', notes: 'Season stock'       },
-];
+const adaptPO = (po) => ({
+  id: po.id,
+  vendor: po.vendorName,
+  date: po.date ? po.date.split('T')[0] : '',
+  items: po.items?.length ?? 0,
+  total: po.total,
+  status: po.status,
+  notes: po.notes || '',
+});
 
-export const getParts          = ()        => mockFetch(_parts);
-export const getLowStockParts  = ()        => mockFetch(_parts.filter(p => p.qty < p.minQty));
-export const getPurchaseOrders = ()        => mockFetch(_purchaseOrders);
+export const getParts = () =>
+  apiFetch('/api/parts').then(data => data.map(adaptPart));
 
-export const createPart = (data) => {
-  const id = 'PT-' + String(_parts.length + 1).padStart(3, '0');
-  const newPart = { id, lastRestocked: new Date().toISOString().split('T')[0], ...data, price: +data.price, qty: +data.qty, minQty: +data.minQty };
-  _parts = [..._parts, newPart];
-  return mockFetch(newPart);
+export const getLowStockParts = () =>
+  apiFetch('/api/parts/low-stock').then(data =>
+    data.map(p => ({ ...p, quantity: p.quantity, minStock: p.minQuantity }))
+  );
+
+export const getPurchaseOrders = () =>
+  apiFetch('/api/purchase-orders').then(data => data.map(adaptPO));
+
+export const createPart = async (data) => {
+  // Resolve supplier name → vendorId by fetching vendors
+  let vendorId = data.vendorId;
+  if (!vendorId && data.supplier) {
+    const vendors = await apiFetch('/api/vendors');
+    const match = vendors.find(v => v.name.toLowerCase() === data.supplier.toLowerCase());
+    vendorId = match?.id ?? (vendors[0]?.id ?? 1);
+  }
+
+  const created = await apiFetch('/api/parts', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: data.name,
+      sku: data.sku || '',
+      category: data.category,
+      price: Number(data.price),
+      quantity: Number(data.quantity),
+      vendorId: vendorId,
+      minQuantity: Number(data.minStock),
+      unit: data.unit,
+    }),
+  });
+  return adaptPart(created);
 };
 
-export const updatePart = (id, data) => {
-  _parts = _parts.map(p => p.id === id ? { ...p, ...data, price: +data.price, qty: +data.qty, minQty: +data.minQty } : p);
-  return mockFetch(_parts.find(p => p.id === id));
+export const updatePart = async (id, data) => {
+  let vendorId = data.vendorId;
+  if (!vendorId && data.supplier) {
+    const vendors = await apiFetch('/api/vendors');
+    const match = vendors.find(v => v.name.toLowerCase() === data.supplier.toLowerCase());
+    if (match) vendorId = match.id;
+  }
+
+  await apiFetch(`/api/parts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      name: data.name,
+      sku: data.sku,
+      category: data.category,
+      price: data.price !== undefined ? Number(data.price) : undefined,
+      quantity: data.quantity !== undefined ? Number(data.quantity) : undefined,
+      vendorId: vendorId,
+      minQuantity: data.minStock !== undefined ? Number(data.minStock) : undefined,
+      unit: data.unit,
+    }),
+  });
+  return { ...data, id };
 };
 
-export const deletePart = (id) => {
-  _parts = _parts.filter(p => p.id !== id);
-  return mockFetch({ success: true });
-};
+export const deletePart = (id) =>
+  apiFetch(`/api/parts/${id}`, { method: 'DELETE' })
+    .then(() => ({ success: true }));
 
-export const createPurchaseOrder = (data) => {
-  const id = 'PO-' + (2035 + _purchaseOrders.length + 1);
-  const po = { id, date: new Date().toISOString().split('T')[0], status: 'Pending', ...data, items: +data.items, total: +data.total };
-  _purchaseOrders = [..._purchaseOrders, po];
-  return mockFetch(po);
-};
+export const createPurchaseOrder = (data) =>
+  apiFetch('/api/purchase-orders', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }).then(adaptPO);

@@ -1,47 +1,81 @@
-import { mockFetch } from './api';
+import { apiFetch } from './api';
 
-let _appointments = [
-  { id: 'APT-101', customerId: 5, customerName: 'Saroj Karki',    phone: '9841-111-005', vehicle: 'KIA Seltos 2022',     plateNo: 'BA 4 KA 7890', service: 'Full Service',          date: '2026-04-20', time: '10:00 AM', mechanic: 'Anil Shrestha',  status: 'Confirmed', notes: 'Customer requested synthetic oil' },
-  { id: 'APT-100', customerId: 1, customerName: 'Ram Bahadur Thapa', phone: '9841-111-001', vehicle: 'Toyota Fortuner 2021', plateNo: 'BA 1 CHA 1234', service: 'Tyre Rotation',        date: '2026-04-22', time: '02:00 PM', mechanic: 'Dipak Magar',    status: 'Pending',   notes: '' },
-  { id: 'APT-099', customerId: 2, customerName: 'Sunita Sharma',   phone: '9841-111-002', vehicle: 'Honda City 2022',    plateNo: 'BA 2 KHA 5678', service: 'AC Service',            date: '2026-04-19', time: '11:30 AM', mechanic: 'Anil Shrestha',  status: 'Confirmed', notes: '' },
-  { id: 'APT-098', customerId: 6, customerName: 'Anita Rai',       phone: '9841-111-006', vehicle: 'Mahindra XUV300 2021',plateNo:'JA 1 PA 2345',  service: 'Brake Inspection',     date: '2026-04-18', time: '09:00 AM', mechanic: 'Anil Shrestha',  status: 'Completed', notes: 'Replaced front brake pads' },
-  { id: 'APT-097', customerId: 3, customerName: 'Prakash Oli',     phone: '9841-111-003', vehicle: 'Suzuki Swift 2020',  plateNo: 'GA 1 GA 9012',  service: 'Oil & Filter Change',  date: '2026-04-17', time: '03:00 PM', mechanic: 'Dipak Magar',    status: 'Completed', notes: '' },
-  { id: 'APT-096', customerId: 4, customerName: 'Binita Gurung',   phone: '9841-111-004', vehicle: 'Hyundai Creta 2023', plateNo: 'BA 3 CHA 3456', service: 'Wheel Alignment',      date: '2026-04-15', time: '01:00 PM', mechanic: 'Anil Shrestha',  status: 'Completed', notes: '' },
-];
+// Convert HH:mm (24h) → HH:MM AM/PM
+function to12h(time) {
+  if (!time) return '';
+  const [h, m] = time.split(':').map(Number);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')} ${suffix}`;
+}
+
+// Convert HH:MM AM/PM → HH:mm (24h)
+function to24h(time) {
+  if (!time) return '09:00';
+  const [timePart, suffix] = time.split(' ');
+  let [h, m] = timePart.split(':').map(Number);
+  if (suffix === 'PM' && h !== 12) h += 12;
+  if (suffix === 'AM' && h === 12) h = 0;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+const adapt = (a) => ({
+  id: a.id,
+  customerId: a.customerId,
+  customerName: a.customerName,
+  phone: '',
+  vehicle: a.plateNo || '',
+  plateNo: a.plateNo || '',
+  service: a.serviceType,        // backend: serviceType → frontend: service
+  date: a.date ? a.date.split('T')[0] : '',
+  time: to12h(a.time),           // backend HH:mm → frontend HH:MM AM/PM
+  mechanic: a.staffName || '',   // backend: staffName → frontend: mechanic
+  status: a.status,
+  notes: a.notes || '',
+});
 
 const SERVICES = [
-  'Oil & Filter Change',
-  'Full Service',
-  'Brake Inspection & Repair',
-  'Tyre Rotation & Balancing',
-  'AC Service & Recharge',
-  'Engine Diagnostics',
-  'Suspension Check',
-  'Electrical Inspection',
-  'Detailing & Wash',
-  'Wheel Alignment',
+  'Oil & Filter Change', 'Full Service', 'Brake Inspection & Repair',
+  'Tyre Rotation & Balancing', 'AC Service & Recharge', 'Engine Diagnostics',
+  'Suspension Check', 'Electrical Inspection', 'Detailing & Wash', 'Wheel Alignment',
 ];
 
-const MECHANICS = ['Anil Shrestha', 'Dipak Magar', 'Sita Gurung'];
+export const getAppointments = () =>
+  apiFetch('/api/appointments').then(data => data.map(adapt));
 
-export const getAppointments         = ()   => mockFetch(_appointments);
-export const getAvailableServices    = ()   => mockFetch(SERVICES);
-export const getAvailableMechanics   = ()   => mockFetch(MECHANICS);
-export const getCustomerAppointments = (id) => mockFetch(_appointments.filter(a => a.customerId === id));
+export const getMyAppointments = () =>
+  apiFetch('/api/appointments/my').then(data => data.map(adapt));
 
-export const createAppointment = (data) => {
-  const id = 'APT-' + (101 + _appointments.length + 1);
-  const apt = { id, status: 'Pending', ...data };
-  _appointments = [apt, ..._appointments];
-  return mockFetch(apt);
-};
+export const getAvailableServices = () => Promise.resolve(SERVICES);
 
-export const cancelAppointment = (id) => {
-  _appointments = _appointments.map(a => a.id === id ? { ...a, status: 'Cancelled' } : a);
-  return mockFetch(_appointments.find(a => a.id === id));
-};
+export const getAvailableMechanics = () =>
+  apiFetch('/api/staff').then(staff => staff.map(s => s.name));
 
-export const completeAppointment = (id, notes = '') => {
-  _appointments = _appointments.map(a => a.id === id ? { ...a, status: 'Completed', notes } : a);
-  return mockFetch(_appointments.find(a => a.id === id));
-};
+export const getCustomerAppointments = (customerId) =>
+  apiFetch('/api/appointments').then(data =>
+    data.filter(a => a.customerId === customerId).map(adapt)
+  );
+
+export const createAppointment = (data) =>
+  apiFetch('/api/appointments', {
+    method: 'POST',
+    body: JSON.stringify({
+      customerId: data.customerId,
+      vehicleId: data.vehicleId || null,
+      staffId: data.staffId || null,
+      date: data.date,
+      time: data.time?.includes('AM') || data.time?.includes('PM') ? to24h(data.time) : data.time,
+      serviceType: data.service || data.serviceType,
+      notes: data.notes || '',
+    }),
+  }).then(adapt);
+
+export const cancelAppointment = (id) =>
+  apiFetch(`/api/appointments/${id}/cancel`, { method: 'PATCH' })
+    .then(() => ({ id, status: 'Cancelled' }));
+
+export const completeAppointment = (id, notes = '') =>
+  apiFetch(`/api/appointments/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'Completed', notes }),
+  }).then(() => ({ id, status: 'Completed', notes }));

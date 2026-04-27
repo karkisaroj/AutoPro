@@ -71,8 +71,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Seed database on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AutoProBackend.Data.AppDbContext>();
+    await AutoProBackend.Data.DbSeeder.SeedAsync(db);
+}
+
 app.UseCors("AllowFrontend");
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

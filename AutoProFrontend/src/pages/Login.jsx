@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, LogIn, Car, ArrowRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../services/api';
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -8,6 +10,7 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -15,13 +18,20 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setSubmitting(false);
-    // Simulate auth — replace with real API call
-    if (form.email && form.password) {
-      navigate('/dashboard');
-    } else {
-      setError('Please fill in all fields.');
+    try {
+      const data = await apiFetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: form.email, password: form.password }),
+      });
+      login(data);
+      const role = data.role;
+      if (role === 'Admin') navigate('/admin');
+      else if (role === 'Staff') navigate('/staff');
+      else navigate('/customer');
+    } catch (err) {
+      setError(err.message || 'Invalid email or password.');
+    } finally {
+      setSubmitting(false);
     }
   };
 

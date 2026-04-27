@@ -19,7 +19,7 @@ const NAV = [
 
 export default function AdminDashboard() {
   return (
-    <DashboardLayout role="Admin" userName="Admin User" navItems={NAV}>
+    <DashboardLayout role="Admin" navItems={NAV}>
       <Routes>
         <Route index              element={<AdminOverview />} />
         <Route path="reports"     element={<AdminReports />}  />

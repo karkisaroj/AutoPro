@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from './ThemeProvider';
+import { useAuth } from '../context/AuthContext';
 import {
   Menu, X, Sun, Moon, Bell, ChevronRight,
   LogOut, Settings, User, Zap
 } from 'lucide-react';
 
-export default function DashboardLayout({ navItems = [], role = 'User', userName = 'User', children }) {
+export default function DashboardLayout({ navItems = [], role = 'User', children }) {
   const { isDark, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
+  const userName = user?.name ?? role;
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [notifOpen,   setNotifOpen]   = useState(false);
   const location = useLocation();
-  const navigate  = useNavigate();
+  useNavigate();
 
   /* Breadcrumb */
   const segments = location.pathname.split('/').filter(Boolean);
@@ -77,7 +80,7 @@ export default function DashboardLayout({ navItems = [], role = 'User', userName
               <p className="text-[10px] text-muted-foreground">{role}</p>
             </div>
             <button
-              onClick={() => navigate('/login')}
+              onClick={logout}
               className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-danger hover:border-red-300 transition-colors cursor-pointer"
               title="Log out"
             >

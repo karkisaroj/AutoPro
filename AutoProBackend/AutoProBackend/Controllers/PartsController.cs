@@ -66,6 +66,7 @@ public class PartsController : ControllerBase
         var part = new Part
         {
             Name = req.Name,
+            Sku = req.Sku,
             Category = req.Category,
             Price = req.Price,
             Quantity = req.Quantity,
@@ -89,6 +90,7 @@ public class PartsController : ControllerBase
         if (part == null) return NotFound();
 
         if (req.Name != null) part.Name = req.Name;
+        if (req.Sku != null) part.Sku = req.Sku;
         if (req.Category != null) part.Category = req.Category;
         if (req.Price.HasValue) part.Price = req.Price.Value;
         if (req.VendorId.HasValue) part.VendorId = req.VendorId.Value;
@@ -121,6 +123,7 @@ public class PartsController : ControllerBase
     {
         Id = p.Id,
         Name = p.Name,
+        Sku = p.Sku,
         Category = p.Category,
         Price = p.Price,
         Quantity = p.Quantity,

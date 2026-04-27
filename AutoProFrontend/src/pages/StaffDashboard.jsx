@@ -19,7 +19,7 @@ const NAV = [
 
 export default function StaffDashboard() {
   return (
-    <DashboardLayout role="Staff" userName="Staff Member" navItems={NAV}>
+    <DashboardLayout role="Staff" navItems={NAV}>
       <Routes>
         <Route index            element={<StaffOverview />}  />
         <Route path="customers" element={<StaffCustomers />} />

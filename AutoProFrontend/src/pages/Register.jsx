@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, UserPlus, Car, Check, ArrowRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../services/api';
 
 const perks = [
   'Real-time service tracking & live status',
@@ -19,6 +21,8 @@ export default function Register() {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
+  const { login } = useAuth();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -27,9 +31,23 @@ export default function Register() {
       return;
     }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setSubmitting(false);
-    navigate('/dashboard');
+    try {
+      const data = await apiFetch('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          password: form.password,
+        }),
+      });
+      login(data);
+      navigate('/customer');
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const strength = form.password.length >= 8

@@ -1,0 +1,38 @@
+# ── Visual Studio / IDE ──────────────────────────────────────────────────────
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ── .NET Build Output ────────────────────────────────────────────────────────
+[Bb]in/
+[Oo]bj/
+*.dll
+*.exe
+*.pdb
+
+# ── EF Core Migrations snapshot (keep migrations, skip designer noise) ───────
+# Uncomment below only if you want to ignore migrations entirely:
+# Migrations/
+
+# ── Secrets / Config overrides ───────────────────────────────────────────────
+appsettings.Production.json
+secrets.json
+*.pfx
+*.p12
+
+# ── Node / React ─────────────────────────────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+
+# ── OS files ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
