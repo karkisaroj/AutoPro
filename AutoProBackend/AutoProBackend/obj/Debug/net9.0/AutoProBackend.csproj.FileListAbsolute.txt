@@ -140,3 +140,4 @@ D:\Year 3\Dotnet Coursework SEM-2\Development\AutoProBackend\AutoProBackend\obj\
 D:\Year 3\Dotnet Coursework SEM-2\Development\AutoProBackend\AutoProBackend\obj\Debug\net9.0\AutoProBackend.pdb
 D:\Year 3\Dotnet Coursework SEM-2\Development\AutoProBackend\AutoProBackend\obj\Debug\net9.0\AutoProBackend.genruntimeconfig.cache
 D:\Year 3\Dotnet Coursework SEM-2\Development\AutoProBackend\AutoProBackend\obj\Debug\net9.0\ref\AutoProBackend.dll
+D:\Year 3\Dotnet Coursework SEM-2\Development\AutoProBackend\AutoProBackend\obj\Debug\net9.0\AutoProBackend.sourcelink.json
