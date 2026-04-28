@@ -1,0 +1,6 @@
+@AutoProBackend_HostAddress = http://localhost:5101
+
+GET {{AutoProBackend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
