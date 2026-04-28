@@ -43,3 +43,34 @@ export const updateCustomer = (id, data) =>
       licenseId: data.licenseId,
     }),
   }).then(() => ({ ...data, id }));
+
+export const addVehicle = (customerId, data) =>
+  apiFetch(`/api/customers/${customerId}/vehicles`, {
+    method: 'POST',
+    body: JSON.stringify({
+      vehicleType: data.vehicleType,
+      plateNo: data.plateNo,
+      registrationDate: data.registrationDate,
+    }),
+  });
+
+export const getCustomerHistory = (id) =>
+  apiFetch(`/api/customers/${id}/history`).then(data =>
+    data.map(s => ({
+      id: s.id,
+      date: s.date ? s.date.split('T')[0] : '',
+      staffName: s.staffName,
+      subtotal: s.subtotal,
+      loyaltyDiscount: s.loyaltyDiscount,
+      tax: s.tax,
+      total: s.total,
+      status: s.status,
+      paymentMethod: s.paymentMethod,
+      items: (s.items || []).map(i => ({
+        partName: i.partName,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        lineTotal: i.lineTotal,
+      })),
+    }))
+  );

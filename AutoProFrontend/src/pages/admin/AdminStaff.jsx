@@ -9,7 +9,7 @@ const ROLES = ['Senior Mechanic', 'Junior Mechanic', 'Service Advisor', 'Parts M
 const DEPTS = ['Workshop', 'Front Desk', 'Inventory', 'Finance', 'Management'];
 const AVATAR_COLORS = ['violet', 'blue', 'emerald', 'amber', 'indigo'];
 
-const EMPTY_FORM = { name: '', email: '', phone: '', role: 'Senior Mechanic', department: 'Workshop', salary: '' };
+const EMPTY_FORM = { name: '', email: '', phone: '', role: 'Senior Mechanic', department: 'Workshop', salary: '', password: '' };
 
 export default function AdminStaff() {
   const [staff,    setStaff]    = useState([]);
@@ -34,7 +34,7 @@ export default function AdminStaff() {
   const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setModal(true); };
   const openEdit = (s) => {
     setEditing(s.id);
-    setForm({ name: s.name, email: s.email, phone: s.phone, role: s.role, department: s.department, salary: s.salary });
+    setForm({ name: s.name, email: s.email, phone: s.phone, role: s.role, department: s.department, salary: s.salary, password: '' });
     setModal(true);
   };
 
@@ -185,6 +185,18 @@ export default function AdminStaff() {
                   />
                 </div>
               ))}
+              {!editing && (
+                <div className="col-span-2">
+                  <label className="form-label">Password</label>
+                  <input
+                    type="password"
+                    value={form.password}
+                    onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                    placeholder="Staff@123"
+                    className="form-input"
+                  />
+                </div>
+              )}
               <div>
                 <label className="form-label">Role</label>
                 <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="form-select">

@@ -1,29 +1,11 @@
-import React, { useState } from 'react';
-import { BarChart3, TrendingUp, CreditCard, Download, Trophy, Star, AlertCircle } from 'lucide-react';
-import { PageHeader, Avatar, StatusBadge } from '../../components/ui/index';
+import React, { useState, useEffect } from 'react';
+import { BarChart3, TrendingUp, CreditCard, Download, Trophy, Star, AlertCircle, Send } from 'lucide-react';
+import { getCustomerReport } from '../../services/reportService';
+import { getCustomers } from '../../services/customerService';
+import { apiFetch } from '../../services/api';
+import { PageHeader, Avatar, Spinner } from '../../components/ui/index';
 
 const TABS = ['Top Spenders', 'Regular Customers', 'Pending Credits'];
-
-const topSpenders = [
-  { rank: 1, name: 'Ram Bahadur Thapa',  phone: '9841001001', totalSpent: 42500, visits: 8  },
-  { rank: 2, name: 'Priya Basnet',       phone: '9861002002', totalSpent: 38000, visits: 11 },
-  { rank: 3, name: 'Gopal Sharma',       phone: '9800003333', totalSpent: 29500, visits: 6  },
-  { rank: 4, name: 'Sunita Thapa',       phone: '9852002002', totalSpent: 28000, visits: 9  },
-  { rank: 5, name: 'Niraj Pandey',       phone: '9868004444', totalSpent: 19800, visits: 5  },
-];
-
-const regularCustomers = [
-  { name: 'Priya Basnet',  phone: '9861002002', visits: 11, lastVisit: '2026-04-10', vehicle: 'KIA Sportage 2020'  },
-  { name: 'Sunita Thapa',  phone: '9852002002', visits: 9,  lastVisit: '2026-04-11', vehicle: 'Honda City 2021'    },
-  { name: 'Ram Bahadur',   phone: '9841001001', visits: 8,  lastVisit: '2026-04-12', vehicle: 'Toyota Corolla'     },
-  { name: 'Gopal Sharma',  phone: '9800003333', visits: 6,  lastVisit: '2026-04-08', vehicle: 'Hyundai i20 2022'   },
-];
-
-const pendingCredits = [
-  { name: 'Dinesh Tamang', phone: '9870005555', amount: 8500,  daysOverdue: 45, lastReminder: '2026-03-28' },
-  { name: 'Kabita Karki',  phone: '9855006666', amount: 3200,  daysOverdue: 38, lastReminder: '2026-04-02' },
-  { name: 'Arjun Lama',    phone: '9840007777', amount: 12000, daysOverdue: 62, lastReminder: '2026-03-15' },
-];
 
 const RANK_STYLES = {
   1: 'bg-amber-400 text-white',
@@ -32,7 +14,42 @@ const RANK_STYLES = {
 };
 
 export default function StaffReports() {
-  const [tab, setTab] = useState(0);
+  const [tab, setTab]                   = useState(0);
+  const [loading, setLoading]           = useState(true);
+  const [topSpenders, setTopSpenders]   = useState([]);
+  const [regularCustomers, setRegularCustomers] = useState([]);
+  const [pendingCredits, setPendingCredits]      = useState([]);
+  const [sending, setSending]           = useState(false);
+
+  useEffect(() => {
+    Promise.all([getCustomerReport(), getCustomers()]).then(([report, allCust]) => {
+      setTopSpenders(report.topSpenders || []);
+      setRegularCustomers(allCust.filter(c => c.visits >= 5).sort((a, b) => b.visits - a.visits).slice(0, 10));
+      setPendingCredits(report.overdueCredits || []);
+      setLoading(false);
+    });
+  }, []);
+
+  const sendReminders = async () => {
+    setSending(true);
+    try {
+      const result = await apiFetch('/api/reports/send-overdue-reminders', { method: 'POST' });
+      alert(`${result.sent} reminder email(s) sent successfully.`);
+    } catch {
+      alert('Failed to send reminders. Check email configuration.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="space-y-6">
+      <PageHeader eyebrow="Staff" title="Customer Reports" subtitle="Identify top spenders, regulars, and customers with overdue credit." />
+      <Spinner />
+    </div>
+  );
+
+  const totalOverdue = pendingCredits.reduce((s, c) => s + (c.amount || 0), 0);
 
   return (
     <div className="space-y-6 page-enter">
@@ -46,9 +63,24 @@ export default function StaffReports() {
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Top Spender Revenue',  value: `NPR ${topSpenders[0].totalSpent.toLocaleString()}`, sub: topSpenders[0].name, color: 'bg-amber-400' },
-          { label: 'Regular Customers',    value: regularCustomers.length, sub: '5+ visits', color: 'bg-blue-500' },
-          { label: 'Overdue Credit',       value: `NPR ${pendingCredits.reduce((s,c)=>s+c.amount,0).toLocaleString()}`, sub: `${pendingCredits.length} accounts`, color: 'bg-red-500' },
+          {
+            label: 'Top Spender Revenue',
+            value: topSpenders[0] ? `NPR ${topSpenders[0].spent?.toLocaleString()}` : '—',
+            sub: topSpenders[0]?.name || 'No data',
+            color: 'bg-amber-400',
+          },
+          {
+            label: 'Regular Customers',
+            value: regularCustomers.length,
+            sub: '5+ visits',
+            color: 'bg-blue-500',
+          },
+          {
+            label: 'Overdue Credit',
+            value: `NPR ${totalOverdue.toLocaleString()}`,
+            sub: `${pendingCredits.length} account${pendingCredits.length !== 1 ? 's' : ''}`,
+            color: 'bg-red-500',
+          },
         ].map(s => (
           <div key={s.label} className="dash-card p-5">
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{s.label}</p>
@@ -83,14 +115,14 @@ export default function StaffReports() {
           <div className="overflow-x-auto">
             <table className="w-full data-table">
               <thead>
-                <tr>{['Rank', 'Customer', 'Phone', 'Total Spent', 'Visits'].map(h => <th key={h}>{h}</th>)}</tr>
+                <tr>{['Rank', 'Customer', 'Total Spent', 'Visits', 'Tier'].map(h => <th key={h}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {topSpenders.map(c => (
-                  <tr key={c.name}>
+                {topSpenders.map((c, idx) => (
+                  <tr key={c.customerId || c.name}>
                     <td>
-                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${RANK_STYLES[c.rank] || 'bg-muted text-muted-foreground'}`}>
-                        {c.rank === 1 ? '🥇' : c.rank === 2 ? '🥈' : c.rank === 3 ? '🥉' : c.rank}
+                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${RANK_STYLES[idx + 1] || 'bg-muted text-muted-foreground'}`}>
+                        {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
                       </span>
                     </td>
                     <td>
@@ -99,13 +131,18 @@ export default function StaffReports() {
                         <span className="font-semibold text-foreground">{c.name}</span>
                       </div>
                     </td>
-                    <td>{c.phone}</td>
-                    <td className="font-black text-primary">NPR {c.totalSpent.toLocaleString()}</td>
+                    <td className="font-black text-primary">NPR {c.spent?.toLocaleString()}</td>
                     <td className="text-center">
                       <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold text-xs">{c.visits}x</span>
                     </td>
+                    <td>
+                      <span className="text-xs font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 px-2 py-0.5 rounded-full">{c.tier}</span>
+                    </td>
                   </tr>
                 ))}
+                {topSpenders.length === 0 && (
+                  <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">No data yet</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -122,11 +159,11 @@ export default function StaffReports() {
           <div className="overflow-x-auto">
             <table className="w-full data-table">
               <thead>
-                <tr>{['Customer', 'Phone', 'Visits', 'Last Visit', 'Vehicle'].map(h => <th key={h}>{h}</th>)}</tr>
+                <tr>{['Customer', 'Phone', 'Visits', 'Total Spent', 'Vehicle'].map(h => <th key={h}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {regularCustomers.map(c => (
-                  <tr key={c.name}>
+                  <tr key={c.id}>
                     <td>
                       <div className="flex items-center gap-2">
                         <Avatar name={c.name} size="sm" color="violet" />
@@ -137,10 +174,13 @@ export default function StaffReports() {
                     <td className="text-center">
                       <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-bold text-xs">{c.visits}x</span>
                     </td>
-                    <td className="text-xs">{c.lastVisit}</td>
-                    <td className="text-xs">{c.vehicle}</td>
+                    <td className="font-bold text-primary">NPR {c.totalSpent?.toLocaleString()}</td>
+                    <td className="text-xs">{c.vehicles?.[0] ? `${c.vehicles[0].vehicleType}` : '—'}</td>
                   </tr>
                 ))}
+                {regularCustomers.length === 0 && (
+                  <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">No customers with 5+ visits yet</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -150,10 +190,18 @@ export default function StaffReports() {
       {/* Tab 2 — Pending Credits */}
       {tab === 2 && (
         <div className="space-y-4">
-          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 font-semibold dark:bg-amber-950/30 dark:border-amber-800/50 dark:text-amber-400">
-            <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
-            Email reminders have been automatically sent to all overdue accounts (≥30 days).
-          </div>
+          {pendingCredits.length > 0 && (
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 font-semibold dark:bg-amber-950/30 dark:border-amber-800/50 dark:text-amber-400">
+              <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                {pendingCredits.length} overdue account{pendingCredits.length !== 1 ? 's' : ''} detected (&gt;30 days pending).
+              </div>
+              <button onClick={sendReminders} disabled={sending} className="btn-primary text-xs px-3 py-1 disabled:opacity-50">
+                {sending ? <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin inline-block" /> : <Send size={12} />}
+                Send All Reminders
+              </button>
+            </div>
+          )}
           <div className="dash-card overflow-hidden">
             <div className="px-5 py-4 border-b border-border flex items-center gap-2">
               <CreditCard size={16} className="text-red-500" />
@@ -162,25 +210,25 @@ export default function StaffReports() {
             <div className="overflow-x-auto">
               <table className="w-full data-table">
                 <thead>
-                  <tr>{['Customer', 'Phone', 'Amount Due', 'Days Overdue', 'Last Reminder', 'Action'].map(h => <th key={h}>{h}</th>)}</tr>
+                  <tr>{['Customer', 'Phone', 'Amount Due', 'Days Overdue', 'Sale Date'].map(h => <th key={h}>{h}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {pendingCredits.map(c => (
-                    <tr key={c.name}>
+                  {pendingCredits.map((c, i) => (
+                    <tr key={i}>
                       <td className="font-semibold text-foreground">{c.name}</td>
                       <td>{c.phone}</td>
-                      <td className="font-bold text-red-600">NPR {c.amount.toLocaleString()}</td>
+                      <td className="font-bold text-red-600">NPR {c.amount?.toLocaleString()}</td>
                       <td>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${c.daysOverdue > 60 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {c.daysOverdue}d overdue
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${c.overdueDays > 60 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {c.overdueDays}d overdue
                         </span>
                       </td>
-                      <td className="text-xs">{c.lastReminder}</td>
-                      <td>
-                        <button className="text-xs font-bold text-primary hover:underline">Send Reminder</button>
-                      </td>
+                      <td className="text-xs">{c.dueDate}</td>
                     </tr>
                   ))}
+                  {pendingCredits.length === 0 && (
+                    <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">No overdue credits</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>

@@ -4,8 +4,10 @@ import { getSales } from '../../services/salesService';
 import { getAppointments } from '../../services/appointmentService';
 import { PageHeader, StatusBadge, Spinner, Avatar } from '../../components/ui/index';
 import StatCard from '../../components/ui/StatCard';
+import { useAuth } from '../../context/AuthContext';
 
 export default function StaffOverview() {
+  const { user } = useAuth();
   const [sales, setSales]        = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading]    = useState(true);
@@ -45,7 +47,7 @@ export default function StaffOverview() {
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 70% 50%, white 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
         <div className="relative">
           <p className="text-white/75 text-sm font-semibold">Good morning,</p>
-          <h1 className="text-2xl font-display font-black">Manisha Thapa 👋</h1>
+          <h1 className="text-2xl font-display font-black">{user?.name} 👋</h1>
           <p className="text-white/70 text-sm mt-1">Service Advisor · AutoPro Garage, Kathmandu</p>
         </div>
       </div>

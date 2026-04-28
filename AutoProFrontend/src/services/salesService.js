@@ -46,6 +46,9 @@ export const createSale = (data) =>
     }),
   }).then(adapt);
 
+export const sendInvoiceEmail = (saleId) =>
+  apiFetch(`/api/sales/${saleId}/send-email`, { method: 'POST' });
+
 export const getRevenueByDay = () =>
   apiFetch('/api/reports/financial?period=monthly').then(report => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

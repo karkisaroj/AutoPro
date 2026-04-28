@@ -6,16 +6,6 @@ import StatCard from '../../components/ui/StatCard';
 
 const VIEWS = ['Daily', 'Monthly', 'Yearly'];
 
-const dailyData = [
-  { period: 'Apr 18', revenue: 18200, expenses: 5000, profit: 13200 },
-  { period: 'Apr 17', revenue: 24500, expenses: 8000, profit: 16500 },
-  { period: 'Apr 16', revenue: 9600,  expenses: 2000, profit: 7600  },
-  { period: 'Apr 15', revenue: 11000, expenses: 3500, profit: 7500  },
-  { period: 'Apr 14', revenue: 32000, expenses: 12000,profit: 20000 },
-  { period: 'Apr 13', revenue: 6500,  expenses: 1500, profit: 5000  },
-  { period: 'Apr 12', revenue: 15300, expenses: 3000, profit: 12300 },
-];
-
 function BarRow({ label, value, max, color = 'bg-violet-500' }) {
   const pct = Math.round((value / max) * 100);
   return (
@@ -50,8 +40,19 @@ export default function AdminReports() {
     </div>
   );
 
-  const { summary, monthly, serviceBreakdown, topStaff } = financial;
-  const maxMonthly = Math.max(...monthly.map(m => m.revenue));
+  const { summary, monthly, serviceBreakdown } = financial;
+  const maxMonthly = Math.max(...monthly.map(m => m.revenue), 1);
+
+  // Derive daily breakdown table from monthly data
+  const dailyData = monthly.map(m => ({
+    period: m.month,
+    revenue: m.revenue || 0,
+    expenses: m.expenses || 0,
+    profit: (m.revenue || 0) - (m.expenses || 0),
+  }));
+
+  // Use topSpenders from customer report for "Top Customers" section
+  const topCustomers = (customers?.topSpenders || []).slice(0, 3);
 
   return (
     <div className="space-y-6 page-enter">
@@ -143,7 +144,7 @@ export default function AdminReports() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         <div className="xl:col-span-2 dash-card overflow-hidden">
           <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-            <h2 className="font-display font-bold text-foreground">Daily Breakdown (This Week)</h2>
+            <h2 className="font-display font-bold text-foreground">Revenue Breakdown (Monthly)</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full data-table">
@@ -151,8 +152,10 @@ export default function AdminReports() {
                 <tr>{['Date', 'Revenue', 'Expenses', 'Net Profit', 'Margin'].map(h => <th key={h}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {dailyData.map(row => {
-                  const margin = ((row.profit / row.revenue) * 100).toFixed(1);
+                {dailyData.length === 0 ? (
+                  <tr><td colSpan={5} className="text-center py-8 text-muted-foreground text-sm">No data for this period</td></tr>
+                ) : dailyData.map(row => {
+                  const margin = row.revenue > 0 ? ((row.profit / row.revenue) * 100).toFixed(1) : '0.0';
                   return (
                     <tr key={row.period}>
                       <td className="font-semibold text-foreground">{row.period}</td>
@@ -170,11 +173,13 @@ export default function AdminReports() {
           </div>
         </div>
 
-        {/* Top staff */}
+        {/* Top customers */}
         <div className="dash-card p-5">
-          <h2 className="font-display font-bold text-foreground mb-4">Top Performers</h2>
+          <h2 className="font-display font-bold text-foreground mb-4">Top Customers</h2>
           <div className="space-y-4">
-            {topStaff.map((s, i) => (
+            {topCustomers.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No customer data yet</p>
+            ) : topCustomers.map((s, i) => (
               <div key={s.name} className="flex items-center gap-3">
                 <div className="relative">
                   <Avatar name={s.name} color={['violet','emerald','blue'][i]} />
@@ -184,11 +189,11 @@ export default function AdminReports() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-foreground truncate">{s.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{s.role}</p>
+                  <p className="text-[11px] text-muted-foreground">{s.tier} · {s.visits} visits</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-black text-foreground">NPR {(s.revenue/1000).toFixed(0)}K</p>
-                  <p className="text-[10px] text-muted-foreground">{s.invoices} invoices</p>
+                  <p className="text-xs font-black text-foreground">NPR {((s.spent || 0) / 1000).toFixed(0)}K</p>
+                  <p className="text-[10px] text-muted-foreground">total spent</p>
                 </div>
               </div>
             ))}

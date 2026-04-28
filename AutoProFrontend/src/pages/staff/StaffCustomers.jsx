@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Car, History, ChevronDown, ChevronUp, X, Check, Search } from 'lucide-react';
-import { getCustomers, createCustomer } from '../../services/customerService';
+import { getCustomers, createCustomer, addVehicle } from '../../services/customerService';
 import { PageHeader, Avatar, Spinner } from '../../components/ui/index';
 
-const EMPTY_FORM = { name: '', email: '', phone: '', address: '', vehicle: '' };
+const EMPTY_FORM = { name: '', email: '', phone: '', password: '', licenseId: '', vehicleType: '', plateNo: '' };
 
 export default function StaffCustomers() {
   const [customers, setCustomers] = useState([]);
@@ -17,19 +17,26 @@ export default function StaffCustomers() {
     getCustomers().then(data => { setCustomers(data); setLoading(false); });
   }, []);
 
-  const save = () => {
-    if (!form.name || !form.phone) return;
-    const payload = { ...form, joined: new Date().toISOString().split('T')[0], totalSpent: 0, history: [] };
-    createCustomer(payload).then(c => {
-      setCustomers(prev => [c, ...prev]);
-      setShowModal(false); setForm(EMPTY_FORM);
-    });
+  const save = async () => {
+    if (!form.name || !form.phone || !form.email) return;
+    const c = await createCustomer(form);
+    if (form.vehicleType && form.plateNo) {
+      await addVehicle(c.id, {
+        vehicleType: form.vehicleType,
+        plateNo: form.plateNo,
+        registrationDate: new Date().toISOString().split('T')[0],
+      }).catch(() => {});
+    }
+    const refreshed = await getCustomers();
+    setCustomers(refreshed);
+    setShowModal(false);
+    setForm(EMPTY_FORM);
   };
 
   const filtered = customers.filter(c =>
     c.name.toLowerCase().includes(query.toLowerCase()) ||
     c.phone.includes(query) ||
-    c.vehicle?.toLowerCase().includes(query.toLowerCase())
+    c.vehicles?.some(v => v.plateNo?.toLowerCase().includes(query.toLowerCase()))
   );
 
   if (loading) return (
@@ -92,7 +99,7 @@ export default function StaffCustomers() {
               <Avatar name={c.name} size="md" color="blue" />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-foreground">{c.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{c.phone} · {c.vehicle}</p>
+                <p className="text-xs text-muted-foreground truncate">{c.phone} · {c.vehicles?.[0] ? `${c.vehicles[0].vehicleType} (${c.vehicles[0].plateNo})` : 'No vehicle'}</p>
               </div>
               {c.totalSpent >= 5000 && (
                 <span className="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full hidden sm:inline">
@@ -117,13 +124,22 @@ export default function StaffCustomers() {
                     <div className="space-y-2 text-sm">
                       {[
                         ['ID', c.id], ['Email', c.email], ['Phone', c.phone],
-                        ['Address', c.address], ['Vehicle', c.vehicle], ['Member Since', c.joined],
+                        ['License ID', c.licenseId], ['Member Since', c.joinDate || c.joined],
+                        ['Tier', c.tier], ['Loyalty Points', c.loyaltyPts],
                       ].map(([k, v]) => (
                         <div key={k} className="flex gap-3">
                           <span className="text-muted-foreground w-28 flex-shrink-0">{k}:</span>
-                          <span className="font-medium text-foreground">{v || '—'}</span>
+                          <span className="font-medium text-foreground">{v ?? '—'}</span>
                         </div>
                       ))}
+                      {c.vehicles?.length > 0 && (
+                        <div>
+                          <span className="text-muted-foreground text-xs font-semibold">Vehicles:</span>
+                          {c.vehicles.map(v => (
+                            <p key={v.id} className="text-xs font-medium text-foreground ml-2">{v.vehicleType} — {v.plateNo}</p>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -168,21 +184,41 @@ export default function StaffCustomers() {
               <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
             </div>
             <div className="p-6 space-y-4">
-              {[
-                { label: 'Full Name',       key: 'name',    ph: 'Ram Bahadur Thapa' },
-                { label: 'Email',           key: 'email',   ph: 'ram@gmail.com' },
-                { label: 'Phone Number',    key: 'phone',   ph: '98XXXXXXXX' },
-                { label: 'Address',         key: 'address', ph: 'Lalitpur, Kathmandu' },
-                { label: 'Vehicle Details', key: 'vehicle', ph: 'Toyota Corolla 2019 (BA 3 PA 8888)' },
-              ].map(({ label, key, ph }) => (
-                <div key={key}>
-                  <label className="form-label">{label}</label>
-                  <input value={form[key]} placeholder={ph}
-                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                    className="form-input"
-                  />
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { label: 'Full Name',      key: 'name',     ph: 'Ram Bahadur Thapa', col: 2 },
+                  { label: 'Email',          key: 'email',    ph: 'ram@gmail.com',      col: 2 },
+                  { label: 'Phone Number',   key: 'phone',    ph: '98XXXXXXXX',         col: 1 },
+                  { label: 'License ID',     key: 'licenseId',ph: 'L-1234-XXXX',        col: 1 },
+                  { label: 'Password',       key: 'password', ph: 'Customer@123',       col: 2, type: 'password' },
+                ].map(({ label, key, ph, col, type }) => (
+                  <div key={key} className={col === 2 ? 'col-span-2' : ''}>
+                    <label className="form-label">{label}</label>
+                    <input
+                      type={type || 'text'}
+                      value={form[key]}
+                      placeholder={ph}
+                      onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                      className="form-input"
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-1">Vehicle (optional)</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Vehicle Type</label>
+                  <input value={form.vehicleType} placeholder="Toyota Corolla 2019"
+                    onChange={e => setForm(f => ({ ...f, vehicleType: e.target.value }))}
+                    className="form-input" />
                 </div>
-              ))}
+                <div>
+                  <label className="form-label">Plate Number</label>
+                  <input value={form.plateNo} placeholder="BA 3 PA 8888"
+                    onChange={e => setForm(f => ({ ...f, plateNo: e.target.value }))}
+                    className="form-input" />
+                </div>
+              </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
                 <button onClick={save} className="btn-primary flex-1">

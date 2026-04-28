@@ -1,44 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Car, Phone, User, Hash, ChevronRight, Users } from 'lucide-react';
-import { PageHeader, Avatar } from '../../components/ui/index';
-
-const ALL_CUSTOMERS = [
-  { id: 'C-001', name: 'Ram Bahadur Thapa',  phone: '9841001001', vehicle: 'BA 3 PA 8888 — Toyota Corolla 2019', email: 'ram@gmail.com',    totalSpent: 42500, visits: 8  },
-  { id: 'C-002', name: 'Sunita Thapa Magar', phone: '9852002002', vehicle: 'BA 2 KA 1234 — Honda City 2021',     email: 'sunita@gmail.com', totalSpent: 28000, visits: 9  },
-  { id: 'C-003', name: 'Gopal Sharma',       phone: '9800003333', vehicle: 'BA 1 JA 5678 — Hyundai i20 2022',   email: 'gopal@gmail.com',  totalSpent: 9500,  visits: 3  },
-  { id: 'C-004', name: 'Priya Basnet',       phone: '9861002002', vehicle: 'BA 4 CHA 9876 — KIA Sportage 2020', email: 'priya@gmail.com',  totalSpent: 38000, visits: 11 },
-  { id: 'C-005', name: 'Niraj Pandey',       phone: '9868004444', vehicle: 'BA 1 DA 2345 — Maruti Swift 2018',  email: 'niraj@gmail.com',  totalSpent: 19800, visits: 5  },
-  { id: 'C-006', name: 'Dinesh Tamang',      phone: '9870005555', vehicle: 'BA 2 GHA 3456 — Suzuki Alto 2021',  email: 'dinesh@gmail.com', totalSpent: 8500,  visits: 4  },
-];
+import { getCustomers } from '../../services/customerService';
+import { PageHeader, Avatar, Spinner } from '../../components/ui/index';
 
 const SEARCH_TYPES = [
   { label: 'Name',           icon: User,   key: 'name'    },
   { label: 'Phone',          icon: Phone,  key: 'phone'   },
-  { label: 'Customer ID',    icon: Hash,   key: 'id'      },
-  { label: 'Vehicle Number', icon: Car,    key: 'vehicle' },
+  { label: 'License ID',     icon: Hash,   key: 'licenseId' },
+  { label: 'Vehicle Plate',  icon: Car,    key: 'plate'   },
 ];
 
 export default function StaffSearch() {
-  const [searchType, setSearchType] = useState('name');
-  const [query, setQuery]           = useState('');
-  const [results, setResults]       = useState([]);
-  const [searched, setSearched]     = useState(false);
+  const [allCustomers, setAllCustomers] = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [searchType, setSearchType]     = useState('name');
+  const [query, setQuery]               = useState('');
+  const [results, setResults]           = useState([]);
+  const [searched, setSearched]         = useState(false);
+
+  useEffect(() => {
+    getCustomers().then(data => { setAllCustomers(data); setLoading(false); });
+  }, []);
 
   const doSearch = () => {
     if (!query.trim()) return;
     const q = query.trim().toLowerCase();
-    const found = ALL_CUSTOMERS.filter(c => c[searchType]?.toLowerCase().includes(q));
+    const found = allCustomers.filter(c => {
+      if (searchType === 'name')      return c.name?.toLowerCase().includes(q);
+      if (searchType === 'phone')     return c.phone?.includes(query.trim());
+      if (searchType === 'licenseId') return c.licenseId?.toLowerCase().includes(q);
+      if (searchType === 'plate')     return c.vehicles?.some(v => v.plateNo?.toLowerCase().includes(q));
+      return false;
+    });
     setResults(found);
     setSearched(true);
   };
 
   return (
     <div className="space-y-6 page-enter">
-      <PageHeader eyebrow="Staff" title="Customer Search" subtitle="Find any customer by name, phone, ID, or vehicle plate number." />
+      <PageHeader eyebrow="Staff" title="Customer Search" subtitle="Find any customer by name, phone, license ID, or vehicle plate number." />
 
       {/* Search panel */}
       <div className="dash-card p-5 space-y-4">
-        {/* Type pills */}
         <div className="flex gap-2 flex-wrap">
           {SEARCH_TYPES.map(({ label, icon: Icon, key }) => (
             <button
@@ -55,7 +58,6 @@ export default function StaffSearch() {
           ))}
         </div>
 
-        {/* Input row */}
         <div className="flex gap-3">
           <div className="relative flex-1">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -79,7 +81,6 @@ export default function StaffSearch() {
           <p className="text-sm text-muted-foreground font-semibold">
             {results.length} result{results.length !== 1 ? 's' : ''} found
           </p>
-
           {results.length === 0 ? (
             <div className="dash-card p-10 text-center">
               <Search size={32} className="mx-auto text-muted-foreground mb-3" />
@@ -94,15 +95,18 @@ export default function StaffSearch() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-black text-foreground">{c.name}</h3>
-                      <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{c.id}</span>
+                      <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-full">#{c.id}</span>
+                      <span className="text-xs font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 px-2 py-0.5 rounded-full">{c.tier}</span>
                     </div>
                     <div className="flex gap-4 mt-1 flex-wrap text-xs text-muted-foreground">
                       <span className="flex items-center gap-1"><Phone size={10} /> {c.phone}</span>
-                      <span className="flex items-center gap-1"><Car size={10} /> {c.vehicle}</span>
+                      {c.vehicles?.[0] && (
+                        <span className="flex items-center gap-1"><Car size={10} /> {c.vehicles[0].plateNo} — {c.vehicles[0].vehicleType}</span>
+                      )}
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-black text-foreground">NPR {c.totalSpent.toLocaleString()}</p>
+                    <p className="font-black text-foreground">NPR {c.totalSpent?.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">{c.visits} visits</p>
                   </div>
                 </div>
@@ -117,21 +121,29 @@ export default function StaffSearch() {
         <div className="dash-card overflow-hidden">
           <div className="px-5 py-4 border-b border-border flex items-center gap-2">
             <Users size={16} className="text-primary" />
-            <h2 className="font-bold text-foreground">All Customers ({ALL_CUSTOMERS.length})</h2>
+            <h2 className="font-bold text-foreground">
+              All Customers {loading ? '' : `(${allCustomers.length})`}
+            </h2>
           </div>
-          <div className="divide-y divide-border">
-            {ALL_CUSTOMERS.map(c => (
-              <div key={c.id} className="flex items-center gap-4 px-5 py-3 hover:bg-card-hover transition-colors cursor-pointer">
-                <Avatar name={c.name} size="sm" color="blue" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground text-sm">{c.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{c.vehicle}</p>
+          {loading ? (
+            <div className="p-8 flex justify-center"><Spinner /></div>
+          ) : (
+            <div className="divide-y divide-border">
+              {allCustomers.map(c => (
+                <div key={c.id} className="flex items-center gap-4 px-5 py-3 hover:bg-card-hover transition-colors">
+                  <Avatar name={c.name} size="sm" color="blue" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-foreground text-sm">{c.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {c.vehicles?.[0] ? `${c.vehicles[0].vehicleType} · ${c.vehicles[0].plateNo}` : c.phone}
+                    </p>
+                  </div>
+                  <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded hidden sm:block">#{c.id}</span>
+                  <ChevronRight size={14} className="text-muted-foreground flex-shrink-0" />
                 </div>
-                <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded hidden sm:block">{c.id}</span>
-                <ChevronRight size={14} className="text-muted-foreground flex-shrink-0" />
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
