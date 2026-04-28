@@ -1,6 +1,7 @@
 using AutoProBackend.Data;
 using AutoProBackend.DTOs;
 using AutoProBackend.Models;
+using AutoProBackend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,8 +15,13 @@ namespace AutoProBackend.Controllers;
 public class SalesController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IEmailService _email;
 
-    public SalesController(AppDbContext db) => _db = db;
+    public SalesController(AppDbContext db, IEmailService email)
+    {
+        _db = db;
+        _email = email;
+    }
 
     [HttpGet]
     [Authorize(Roles = "Admin,Staff")]
@@ -155,6 +161,46 @@ public class SalesController : ControllerBase
         await _db.Entry(sale).Reference(s => s.Staff).LoadAsync();
 
         return Created($"/api/sales/{sale.Id}", MapToResponse(sale));
+    }
+
+    [HttpPost("{id}/send-email")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> SendInvoiceEmail(int id)
+    {
+        var sale = await _db.Sales
+            .Include(s => s.Customer).ThenInclude(c => c.User)
+            .Include(s => s.Items)
+            .FirstOrDefaultAsync(s => s.Id == id);
+
+        if (sale == null) return NotFound();
+
+        var email = sale.Customer?.User?.Email;
+        if (string.IsNullOrWhiteSpace(email))
+            return BadRequest(new { message = "Customer email not found" });
+
+        var itemRows = string.Join("", sale.Items.Select(i =>
+            $"<tr><td>{i.PartName}</td><td style='text-align:center'>{i.Quantity}</td><td>NPR {i.UnitPrice:N0}</td><td>NPR {i.LineTotal:N0}</td></tr>"));
+
+        var body = $@"
+<html><body style='font-family:Arial,sans-serif;color:#333'>
+<h2 style='color:#7c3aed'>AutoPro Garage — Invoice #{sale.Id}</h2>
+<p>Dear {sale.Customer?.Name},</p>
+<p>Thank you for your visit. Here is your invoice summary:</p>
+<table border='1' cellpadding='8' cellspacing='0' style='border-collapse:collapse;width:100%'>
+  <thead style='background:#f3f4f6'><tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
+  <tbody>{itemRows}</tbody>
+</table>
+<br/>
+<p><strong>Subtotal:</strong> NPR {sale.Subtotal:N0}</p>
+{(sale.LoyaltyDiscount > 0 ? $"<p><strong>Loyalty Discount (10%):</strong> -NPR {sale.LoyaltyDiscount:N0}</p>" : "")}
+<p><strong>VAT (13%):</strong> NPR {sale.Tax:N0}</p>
+<p style='font-size:1.1em'><strong>Grand Total:</strong> NPR {sale.Total:N0}</p>
+<p><strong>Payment Method:</strong> {sale.PaymentMethod}</p>
+<br/><p>Thank you for choosing AutoPro Garage!</p>
+</body></html>";
+
+        await _email.SendAsync(email, $"AutoPro Invoice #{sale.Id}", body);
+        return Ok(new { message = "Invoice email sent" });
     }
 
     private static string CalculateTier(decimal totalSpent) => totalSpent switch

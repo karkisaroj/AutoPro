@@ -36,6 +36,7 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Invalid email or password" });
 
         var name = user.Customer?.Name ?? user.Staff?.Name ?? user.Email;
+        var profileId = user.Customer?.Id ?? user.Staff?.Id;
         var token = GenerateToken(user, name);
 
         return Ok(new AuthResponse
@@ -43,6 +44,7 @@ public class AuthController : ControllerBase
             Token = token,
             Role = user.Role.Name,
             UserId = user.Id,
+            ProfileId = profileId,
             Name = name,
             Email = user.Email
         });
@@ -85,6 +87,7 @@ public class AuthController : ControllerBase
             Token = token,
             Role = "Customer",
             UserId = user.Id,
+            ProfileId = customer.Id,
             Name = customer.Name,
             Email = user.Email
         });

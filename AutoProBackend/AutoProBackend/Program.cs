@@ -1,4 +1,5 @@
 using AutoProBackend.Data;
+using AutoProBackend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -29,6 +30,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddControllers();
 
 // CORS for React frontend

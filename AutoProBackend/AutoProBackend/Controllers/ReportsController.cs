@@ -1,5 +1,6 @@
 using AutoProBackend.Data;
 using AutoProBackend.DTOs;
+using AutoProBackend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,8 +13,13 @@ namespace AutoProBackend.Controllers;
 public class ReportsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IEmailService _email;
 
-    public ReportsController(AppDbContext db) => _db = db;
+    public ReportsController(AppDbContext db, IEmailService email)
+    {
+        _db = db;
+        _email = email;
+    }
 
     [HttpGet("financial")]
     [Authorize(Roles = "Admin")]
@@ -119,6 +125,39 @@ public class ReportsController : ControllerBase
             LoyaltyTiers = loyaltyTiers,
             OverdueCredits = overdueCredits
         });
+    }
+
+    [HttpPost("send-overdue-reminders")]
+    public async Task<IActionResult> SendOverdueReminders()
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-30);
+        var overdue = await _db.Sales
+            .Include(s => s.Customer).ThenInclude(c => c.User)
+            .Where(s => s.Status == "Pending" && s.Date <= cutoff)
+            .ToListAsync();
+
+        int sent = 0;
+        foreach (var sale in overdue)
+        {
+            var email = sale.Customer?.User?.Email;
+            if (string.IsNullOrWhiteSpace(email)) continue;
+
+            var daysOverdue = (int)(DateTime.UtcNow - sale.Date).TotalDays;
+            var body = $@"
+<html><body style='font-family:Arial,sans-serif;color:#333'>
+<h2 style='color:#dc2626'>AutoPro Garage — Payment Reminder</h2>
+<p>Dear {sale.Customer?.Name},</p>
+<p>This is a reminder that your payment of <strong>NPR {sale.Total:N0}</strong> for Invoice #{sale.Id}
+is overdue by <strong>{daysOverdue} days</strong>.</p>
+<p>Please contact us at AutoPro Garage, Kathmandu to settle your balance at your earliest convenience.</p>
+<p>Thank you.</p>
+</body></html>";
+
+            await _email.SendAsync(email, "AutoPro Garage — Payment Reminder", body);
+            sent++;
+        }
+
+        return Ok(new { sent, message = $"{sent} reminder email(s) sent" });
     }
 
     [HttpGet("low-stock")]
