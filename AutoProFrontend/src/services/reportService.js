@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-import { apiFetch } from './api';
-
-export const getFinancialReport = () =>
-  apiFetch('/api/reports/financial').then(data => ({
-=======
 import { apiFetch, BASE_URL } from './api';
 
 export const getFinancialReport = (period = 'monthly', year = null, month = null) => {
@@ -11,7 +5,6 @@ export const getFinancialReport = (period = 'monthly', year = null, month = null
   if (year  != null) params.append('year',  year);
   if (month != null) params.append('month', month);
   return apiFetch(`/api/reports/financial?${params.toString()}`).then(data => ({
->>>>>>> noble
     summary: {
       totalRevenue: data.totalRevenue,
       totalExpenses: data.totalExpenses,
@@ -20,16 +13,6 @@ export const getFinancialReport = (period = 'monthly', year = null, month = null
       invoicesIssued: data.invoicesIssued,
       avgInvoiceValue: data.averageInvoiceValue,
     },
-<<<<<<< HEAD
-    monthly: (data.dailyBreakdown || []).slice(-6).map((entry) => ({
-      month: new Date(entry.date).toLocaleString('default', { month: 'short' }),
-      revenue: entry.revenue,
-      expenses: 0,
-    })),
-    serviceBreakdown: [],
-    topStaff: [],
-  }));
-=======
     monthly: (data.monthlyTrend || []).map(entry => ({
       month:    entry.month,
       revenue:  entry.revenue,
@@ -48,7 +31,6 @@ export const getFinancialReport = (period = 'monthly', year = null, month = null
     })),
   }));
 };
->>>>>>> noble
 
 export const getCustomerReport = () =>
   apiFetch('/api/reports/customers').then(data => ({
@@ -75,8 +57,6 @@ export const getCustomerReport = () =>
     newCustomersThisMonth: 0,
     repeatCustomers: 0,
   }));
-<<<<<<< HEAD
-=======
 
 export async function downloadFinancialReportPdf(period = 'monthly', year = null, month = null) {
   const token = localStorage.getItem('authToken');
@@ -104,4 +84,3 @@ export async function downloadFinancialReportPdf(period = 'monthly', year = null
   a.remove();
   URL.revokeObjectURL(url);
 }
->>>>>>> noble

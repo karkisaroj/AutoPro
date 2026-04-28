@@ -5,17 +5,10 @@ const adapt = (c) => ({
   name: c.name,
   phone: c.phone,
   email: c.email,
-<<<<<<< HEAD
-  // Derive vehicle and plateNo from first vehicle in list
-  vehicle: c.vehicles?.length > 0 ? `${c.vehicles[0].vehicleType} ${c.vehicles[0].plateNo}` : 'N/A',
-  plateNo: c.vehicles?.length > 0 ? c.vehicles[0].plateNo : '',
-  loyaltyPts: c.loyaltyPoints,   // backend: loyaltyPoints → frontend: loyaltyPts
-=======
   licenseId: c.licenseId || '',
   vehicle: c.vehicles?.length > 0 ? `${c.vehicles[0].vehicleType} ${c.vehicles[0].plateNo}` : 'N/A',
   plateNo: c.vehicles?.length > 0 ? c.vehicles[0].plateNo : '',
   loyaltyPts: c.loyaltyPoints,
->>>>>>> noble
   tier: c.tier,
   joinDate: c.joinDate ? c.joinDate.split('T')[0] : '',
   totalSpent: c.totalSpent,

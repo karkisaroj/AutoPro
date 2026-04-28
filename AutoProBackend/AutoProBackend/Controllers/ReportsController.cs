@@ -14,13 +14,6 @@ public class ReportsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IEmailService _email;
-<<<<<<< HEAD
-
-    public ReportsController(AppDbContext db, IEmailService email)
-    {
-        _db = db;
-        _email = email;
-=======
     private readonly IReportPdfService _pdf;
 
     public ReportsController(AppDbContext db, IEmailService email, IReportPdfService pdf)
@@ -28,7 +21,6 @@ public class ReportsController : ControllerBase
         _db = db;
         _email = email;
         _pdf = pdf;
->>>>>>> noble
     }
 
     [HttpGet("financial")]
@@ -38,35 +30,6 @@ public class ReportsController : ControllerBase
         [FromQuery] int? year = null,
         [FromQuery] int? month = null)
     {
-<<<<<<< HEAD
-        year ??= DateTime.UtcNow.Year;
-        month ??= DateTime.UtcNow.Month;
-
-        IQueryable<Models.Sale> query = _db.Sales;
-
-        if (period == "daily")
-            query = query.Where(s => s.Date.Year == year && s.Date.Month == month && s.Date.Day == DateTime.UtcNow.Day);
-        else if (period == "monthly")
-            query = query.Where(s => s.Date.Year == year && s.Date.Month == month);
-        else
-            query = query.Where(s => s.Date.Year == year);
-
-        var sales = await query.ToListAsync();
-        var totalRevenue = sales.Where(s => s.Status == "Paid").Sum(s => s.Total);
-        var totalExpenses = await _db.PurchaseOrders
-            .Where(po => po.Status == "Received" && po.Date.Year == year)
-            .SumAsync(po => po.Total);
-
-        // Previous period for MoM change
-        var prevMonth = month == 1 ? 12 : month.Value - 1;
-        var prevYear = month == 1 ? year.Value - 1 : year.Value;
-        var prevRevenue = await _db.Sales
-            .Where(s => s.Date.Year == prevYear && s.Date.Month == prevMonth && s.Status == "Paid")
-            .SumAsync(s => s.Total);
-
-        var momChange = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
-
-=======
         year  ??= DateTime.UtcNow.Year;
         month ??= DateTime.UtcNow.Month;
         return Ok(await BuildFinancialDataAsync(period, year.Value, month.Value));
@@ -132,36 +95,18 @@ public class ReportsController : ControllerBase
         var momChange = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
 
         // 3. Per-date breakdown for the table
->>>>>>> noble
         var dailyBreakdown = sales
             .Where(s => s.Status == "Paid")
             .GroupBy(s => s.Date.Date)
             .Select(g => new DailyRevenueEntry
             {
-<<<<<<< HEAD
-                Date = g.Key,
-                Revenue = g.Sum(s => s.Total),
-=======
                 Date     = g.Key,
                 Revenue  = g.Sum(s => s.Total),
->>>>>>> noble
                 Invoices = g.Count()
             })
             .OrderBy(e => e.Date)
             .ToList();
 
-<<<<<<< HEAD
-        return Ok(new FinancialReportResponse
-        {
-            TotalRevenue = totalRevenue,
-            TotalExpenses = totalExpenses,
-            NetProfit = totalRevenue - totalExpenses,
-            InvoicesIssued = sales.Count,
-            AverageInvoiceValue = sales.Count > 0 ? totalRevenue / sales.Count : 0,
-            MonthOverMonthChange = momChange,
-            DailyBreakdown = dailyBreakdown
-        });
-=======
         // 4. Monthly trend — always last 6 calendar months (for the bar chart)
         var sixMonthsAgo = new DateTime(
             DateTime.UtcNow.AddMonths(-5).Year,
@@ -224,7 +169,6 @@ public class ReportsController : ControllerBase
             MonthlyTrend         = monthlyTrend,
             ServiceBreakdown     = serviceGroups
         };
->>>>>>> noble
     }
 
     [HttpGet("customers")]
@@ -236,17 +180,10 @@ public class ReportsController : ControllerBase
             .Select(c => new TopSpenderEntry
             {
                 CustomerId = c.Id,
-<<<<<<< HEAD
-                Name = c.Name,
-                TotalSpent = c.TotalSpent,
-                Visits = c.Visits,
-                Tier = c.Tier
-=======
                 Name       = c.Name,
                 TotalSpent = c.TotalSpent,
                 Visits     = c.Visits,
                 Tier       = c.Tier
->>>>>>> noble
             })
             .ToListAsync();
 
@@ -254,11 +191,7 @@ public class ReportsController : ControllerBase
             .GroupBy(c => c.Tier)
             .Select(g => new LoyaltyTierSummary
             {
-<<<<<<< HEAD
-                Tier = g.Key,
-=======
                 Tier  = g.Key,
->>>>>>> noble
                 Count = g.Count()
             })
             .ToListAsync();
@@ -269,32 +202,19 @@ public class ReportsController : ControllerBase
             .Where(s => s.Status == "Pending" && s.Date <= oneMonthAgo)
             .Select(s => new OverdueCreditEntry
             {
-<<<<<<< HEAD
-                CustomerId = s.CustomerId,
-                Name = s.Customer.Name,
-                Phone = s.Customer.Phone,
-                AmountDue = s.Total,
-                SaleDate = s.Date,
-=======
                 CustomerId  = s.CustomerId,
                 Name        = s.Customer.Name,
                 Phone       = s.Customer.Phone,
                 AmountDue   = s.Total,
                 SaleDate    = s.Date,
->>>>>>> noble
                 DaysOverdue = (int)(DateTime.UtcNow - s.Date).TotalDays
             })
             .ToListAsync();
 
         return Ok(new CustomerReportResponse
         {
-<<<<<<< HEAD
-            TopSpenders = topSpenders,
-            LoyaltyTiers = loyaltyTiers,
-=======
             TopSpenders    = topSpenders,
             LoyaltyTiers   = loyaltyTiers,
->>>>>>> noble
             OverdueCredits = overdueCredits
         });
     }
@@ -341,21 +261,12 @@ is overdue by <strong>{daysOverdue} days</strong>.</p>
             .Where(p => p.Quantity < p.MinQuantity)
             .Select(p => new LowStockPartResponse
             {
-<<<<<<< HEAD
-                Id = p.Id,
-                Name = p.Name,
-                Category = p.Category,
-                Quantity = p.Quantity,
-                MinQuantity = p.MinQuantity,
-                VendorName = p.Vendor.Name
-=======
                 Id          = p.Id,
                 Name        = p.Name,
                 Category    = p.Category,
                 Quantity    = p.Quantity,
                 MinQuantity = p.MinQuantity,
                 VendorName  = p.Vendor.Name
->>>>>>> noble
             })
             .ToListAsync();
 

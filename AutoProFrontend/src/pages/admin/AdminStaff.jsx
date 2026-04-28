@@ -5,23 +5,6 @@ import { Avatar, StatusBadge, TableSkeleton, EmptyState, PageHeader, ConfirmDial
 import Modal from '../../components/ui/Modal';
 import StatCard from '../../components/ui/StatCard';
 
-<<<<<<< HEAD
-const ROLES = ['Senior Mechanic', 'Junior Mechanic', 'Service Advisor', 'Parts Manager', 'Accountant', 'Admin Manager'];
-const DEPTS = ['Workshop', 'Front Desk', 'Inventory', 'Finance', 'Management'];
-const AVATAR_COLORS = ['violet', 'blue', 'emerald', 'amber', 'indigo'];
-
-const EMPTY_FORM = { name: '', email: '', phone: '', role: 'Senior Mechanic', department: 'Workshop', salary: '', password: '' };
-
-export default function AdminStaff() {
-  const [staff,    setStaff]    = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [search,   setSearch]   = useState('');
-  const [modal,    setModal]    = useState(false);
-  const [editing,  setEditing]  = useState(null);
-  const [form,     setForm]     = useState(EMPTY_FORM);
-  const [confirm,  setConfirm]  = useState(null); // { id, name }
-  const [saving,   setSaving]   = useState(false);
-=======
 const ROLES = ['Senior Mechanic', 'Junior Mechanic', 'Service Advisor', 'Parts Manager', 'Accountant'];
 const DEPTS = ['Workshop', 'Front Desk', 'Inventory', 'Finance', 'Management'];
 const AVATAR_COLORS = ['violet', 'blue', 'emerald', 'amber', 'indigo'];
@@ -55,7 +38,6 @@ export default function AdminStaff() {
   const [confirm,   setConfirm]   = useState(null);
   const [saving,    setSaving]    = useState(false);
   const [saveError, setSaveError] = useState(null);
->>>>>>> noble
 
   useEffect(() => {
     getStaff().then(data => { setStaff(data); setLoading(false); });
@@ -67,12 +49,6 @@ export default function AdminStaff() {
     s.department.toLowerCase().includes(search.toLowerCase())
   );
 
-<<<<<<< HEAD
-  const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setModal(true); };
-  const openEdit = (s) => {
-    setEditing(s.id);
-    setForm({ name: s.name, email: s.email, phone: s.phone, role: s.role, department: s.department, salary: s.salary, password: '' });
-=======
   const openAdd = () => {
     setEditing(null);
     setForm(EMPTY_FORM);
@@ -84,17 +60,13 @@ export default function AdminStaff() {
     setEditing(s.id);
     setForm({ name: s.name, email: s.email, phone: s.phone, role: s.role, department: s.department, salary: s.salary, password: '' });
     setSaveError(null);
->>>>>>> noble
     setModal(true);
   };
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.email.trim()) return;
     setSaving(true);
-<<<<<<< HEAD
-=======
     setSaveError(null);
->>>>>>> noble
     try {
       if (editing) {
         const updated = await updateStaff(editing, form);
@@ -104,14 +76,6 @@ export default function AdminStaff() {
         setStaff(prev => [...prev, created]);
       }
       setModal(false);
-<<<<<<< HEAD
-    } finally { setSaving(false); }
-  };
-
-  const handleToggle = async (id) => {
-    const updated = await toggleStaffStatus(id);
-    setStaff(prev => prev.map(s => s.id === id ? { ...s, active: updated.active } : s));
-=======
     } catch (err) {
       setSaveError(err?.message || 'Failed to save. Please try again.');
     } finally {
@@ -122,7 +86,6 @@ export default function AdminStaff() {
   const handleToggle = async (id) => {
     const result = await toggleStaffStatus(id);
     setStaff(prev => prev.map(s => s.id === id ? { ...s, active: result.isActive } : s));
->>>>>>> noble
   };
 
   const handleDelete = async () => {
@@ -132,17 +95,10 @@ export default function AdminStaff() {
   };
 
   const stats = [
-<<<<<<< HEAD
-    { label: 'Total Staff',  value: staff.length,                           color: 'violet', icon: Users         },
-    { label: 'Active',       value: staff.filter(s => s.active).length,     color: 'emerald',icon: ToggleRight   },
-    { label: 'On Leave',     value: staff.filter(s => !s.active).length,    color: 'red',    icon: ToggleLeft    },
-    { label: 'Departments',  value: [...new Set(staff.map(s=>s.department))].length, color: 'blue', icon: Shield },
-=======
     { label: 'Total Staff',  value: staff.length,                                             color: 'violet',  icon: Users      },
     { label: 'Active',       value: staff.filter(s => s.active).length,                       color: 'emerald', icon: ToggleRight },
     { label: 'Inactive',     value: staff.filter(s => !s.active).length,                      color: 'red',     icon: ToggleLeft  },
     { label: 'Departments',  value: [...new Set(staff.map(s => s.department))].length,         color: 'blue',    icon: Shield      },
->>>>>>> noble
   ];
 
   return (
@@ -150,11 +106,7 @@ export default function AdminStaff() {
       <PageHeader
         eyebrow="HR Management"
         title="Staff Management"
-<<<<<<< HEAD
-        subtitle="Register, manage, and assign roles to team members."
-=======
         subtitle="Register, manage, and assign roles to your team members."
->>>>>>> noble
         actions={
           <button onClick={openAdd} className="btn-primary">
             <Plus size={15} /> Add Staff Member
@@ -176,11 +128,7 @@ export default function AdminStaff() {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-<<<<<<< HEAD
-              placeholder="Search staff..."
-=======
               placeholder="Search by name, role…"
->>>>>>> noble
               className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none flex-1"
             />
           </div>
@@ -197,15 +145,11 @@ export default function AdminStaff() {
             </thead>
             <tbody>
               {loading ? <TableSkeleton cols={7} rows={5} /> : filtered.length === 0 ? (
-<<<<<<< HEAD
-                <tr><td colSpan={7}><EmptyState icon={Users} title="No staff found" description="Add a new staff member to get started." /></td></tr>
-=======
                 <tr>
                   <td colSpan={7}>
                     <EmptyState icon={Users} title="No staff found" description="Add a new staff member to get started." />
                   </td>
                 </tr>
->>>>>>> noble
               ) : filtered.map((s, i) => (
                 <tr key={s.id}>
                   <td>
@@ -218,15 +162,10 @@ export default function AdminStaff() {
                     </div>
                   </td>
                   <td>
-<<<<<<< HEAD
-                    <p className="font-semibold text-foreground text-sm">{s.role}</p>
-                    <p className="text-[11px] text-muted-foreground">{s.department}</p>
-=======
                     <span className={`badge text-[10px] font-semibold ${ROLE_COLOR[s.role] || 'bg-muted text-muted-foreground'}`}>
                       {s.role}
                     </span>
                     <p className="text-[11px] text-muted-foreground mt-1">{s.department}</p>
->>>>>>> noble
                   </td>
                   <td className="font-mono text-xs">{s.phone}</td>
                   <td>
@@ -241,12 +180,6 @@ export default function AdminStaff() {
                   </td>
                   <td>
                     <div className="flex items-center gap-1">
-<<<<<<< HEAD
-                      <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer" title="Edit">
-                        <Edit2 size={13} />
-                      </button>
-                      <button onClick={() => setConfirm({ id: s.id, name: s.name })} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-600 transition-colors cursor-pointer" title="Delete">
-=======
                       <button
                         onClick={() => openEdit(s)}
                         className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
@@ -259,7 +192,6 @@ export default function AdminStaff() {
                         className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-600 transition-colors cursor-pointer"
                         title="Remove"
                       >
->>>>>>> noble
                         <Trash2 size={13} />
                       </button>
                     </div>
@@ -279,47 +211,6 @@ export default function AdminStaff() {
           icon={Users}
         >
           <div className="space-y-4">
-<<<<<<< HEAD
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { label: 'Full Name',    key: 'name',  type: 'text',  ph: 'Anil Shrestha',     half: false },
-                { label: 'Email',        key: 'email', type: 'email', ph: 'anil@autopro.com',  half: false },
-                { label: 'Phone',        key: 'phone', type: 'tel',   ph: '9841-XXX-XXX',      half: true  },
-                { label: 'Salary (NPR)', key: 'salary',type: 'number',ph: '30000',             half: true  },
-              ].map(({ label, key, type, ph, half }) => (
-                <div key={key} className={half ? '' : 'col-span-2'}>
-                  <label className="form-label">{label}</label>
-                  <input
-                    type={type}
-                    value={form[key]}
-                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                    placeholder={ph}
-                    className="form-input"
-                  />
-                </div>
-              ))}
-              {!editing && (
-                <div className="col-span-2">
-                  <label className="form-label">Password</label>
-                  <input
-                    type="password"
-                    value={form.password}
-                    onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                    placeholder="Staff@123"
-                    className="form-input"
-                  />
-                </div>
-              )}
-              <div>
-                <label className="form-label">Role</label>
-                <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="form-select">
-                  {ROLES.map(r => <option key={r}>{r}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="form-label">Department</label>
-                <select value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} className="form-select">
-=======
 
             {saveError && (
               <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-2">
@@ -381,18 +272,11 @@ export default function AdminStaff() {
                   onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
                   className="form-select"
                 >
->>>>>>> noble
                   {DEPTS.map(d => <option key={d}>{d}</option>)}
                 </select>
               </div>
             </div>
 
-<<<<<<< HEAD
-            <div className="flex gap-3 pt-2 border-t border-border">
-              <button onClick={() => setModal(false)} className="btn-secondary flex-1">Cancel</button>
-              <button onClick={handleSave} className="btn-primary flex-1 justify-center" disabled={saving}>
-                {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Check size={15} />}
-=======
             {/* Contact & Compensation */}
             <SectionDivider label="Contact & Compensation" />
             <div className="grid grid-cols-2 gap-3">
@@ -445,7 +329,6 @@ export default function AdminStaff() {
                   ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   : <Check size={15} />
                 }
->>>>>>> noble
                 {editing ? 'Save Changes' : 'Add Member'}
               </button>
             </div>
@@ -457,11 +340,7 @@ export default function AdminStaff() {
       {confirm && (
         <ConfirmDialog
           title={`Remove ${confirm.name}?`}
-<<<<<<< HEAD
-          description="This will permanently remove this staff member from the system. This action cannot be undone."
-=======
           description="This will deactivate the staff member's account. This action cannot be undone."
->>>>>>> noble
           onConfirm={handleDelete}
           onCancel={() => setConfirm(null)}
           danger

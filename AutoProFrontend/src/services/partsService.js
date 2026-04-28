@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import { apiFetch } from './api';
-=======
 import { apiFetch, BASE_URL } from './api';
->>>>>>> noble
 
 // Backend field adapter → AdminParts.jsx expects: name, sku, category, supplier, price, quantity, minStock, unit
 const adaptPart = (p) => ({
@@ -99,8 +95,6 @@ export const createPurchaseOrder = (data) =>
     method: 'POST',
     body: JSON.stringify(data),
   }).then(adaptPO);
-<<<<<<< HEAD
-=======
 
 export const updatePurchaseOrderStatus = (id, status) =>
   apiFetch(`/api/purchase-orders/${id}/status`, {
@@ -124,4 +118,3 @@ export async function downloadPurchaseOrderPdf(id) {
   a.remove();
   URL.revokeObjectURL(url);
 }
->>>>>>> noble

@@ -25,9 +25,6 @@ export async function apiFetch(endpoint, options = {}) {
     const error = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error(error.message || 'API request failed');
   }
-<<<<<<< HEAD
-=======
   if (res.status === 204) return null;
->>>>>>> noble
   return res.json();
 }

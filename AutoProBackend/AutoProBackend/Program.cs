@@ -1,20 +1,14 @@
 using AutoProBackend.Data;
 using AutoProBackend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-<<<<<<< HEAD
-=======
 using QuestPDF.Infrastructure;
->>>>>>> noble
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 
-<<<<<<< HEAD
-=======
 QuestPDF.Settings.License = LicenseType.Community;
 
->>>>>>> noble
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
@@ -40,10 +34,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IEmailService, EmailService>();
-<<<<<<< HEAD
-=======
 builder.Services.AddScoped<IReportPdfService, ReportPdfService>();
->>>>>>> noble
 builder.Services.AddControllers();
 
 // CORS for React frontend

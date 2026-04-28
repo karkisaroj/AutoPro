@@ -1,10 +1,7 @@
 using AutoProBackend.Data;
 using AutoProBackend.DTOs;
 using AutoProBackend.Models;
-<<<<<<< HEAD
-=======
 using AutoProBackend.Services;
->>>>>>> noble
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,10 +14,6 @@ namespace AutoProBackend.Controllers;
 public class PurchaseOrdersController : ControllerBase
 {
     private readonly AppDbContext _db;
-<<<<<<< HEAD
-
-    public PurchaseOrdersController(AppDbContext db) => _db = db;
-=======
     private readonly IReportPdfService _pdf;
 
     public PurchaseOrdersController(AppDbContext db, IReportPdfService pdf)
@@ -28,7 +21,6 @@ public class PurchaseOrdersController : ControllerBase
         _db  = db;
         _pdf = pdf;
     }
->>>>>>> noble
 
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] string? status)
@@ -127,8 +119,6 @@ public class PurchaseOrdersController : ControllerBase
         return NoContent();
     }
 
-<<<<<<< HEAD
-=======
     [HttpGet("{id}/pdf")]
     public async Task<IActionResult> GetPdf(int id)
     {
@@ -144,7 +134,6 @@ public class PurchaseOrdersController : ControllerBase
         return File(pdfBytes, "application/pdf", $"autopro-po-{id}.pdf");
     }
 
->>>>>>> noble
     private static PurchaseOrderResponse MapToResponse(PurchaseOrder po) => new()
     {
         Id = po.Id,
