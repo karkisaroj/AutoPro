@@ -1,0 +1,53 @@
+# ── Visual Studio / IDE ──────────────────────────────────────────────────────
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ── .NET Build Output ────────────────────────────────────────────────────────
+[Bb]in/
+[Oo]bj/
+*.dll
+*.exe
+*.pdb
+
+<<<<<<< HEAD
+# ── EF Core Migrations snapshot (keep migrations, skip designer noise) ───────
+=======
+# ── EF Core Migrations snapshot ──────────────────────────────────────────────
+>>>>>>> noble
+# Uncomment below only if you want to ignore migrations entirely:
+# Migrations/
+
+# ── Secrets / Config overrides ───────────────────────────────────────────────
+appsettings.Production.json
+secrets.json
+*.pfx
+*.p12
+
+# ── Node / React ─────────────────────────────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+
+# ── OS files ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+<<<<<<< HEAD
+=======
+
+# ── Claude / AI Tooling ──────────────────────────────────────────────────────
+.claude/
+.claude/*
+.claude-cache/
+.claude.json
+.claude-settings.json
+.claude_history
+>>>>>>> noble
