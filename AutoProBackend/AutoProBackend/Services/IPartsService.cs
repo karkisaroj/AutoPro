@@ -4,7 +4,7 @@ namespace AutoProBackend.Services;
 
 public interface IPartsService
 {
-    Task<List<PartResponse>> GetAllAsync(string? category);
+    Task<PagedResult<PartResponse>> GetAllAsync(string? category, int page, int pageSize);
     Task<PartResponse?> GetByIdAsync(int id);
     Task<List<LowStockPartResponse>> GetLowStockAsync();
     Task<(PartResponse? response, bool vendorNotFound)> CreateAsync(CreatePartRequest req);

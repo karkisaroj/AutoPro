@@ -14,8 +14,11 @@ public class PartsController : ControllerBase
     public PartsController(IPartsService parts) => _parts = parts;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] string? category) =>
-        Ok(await _parts.GetAllAsync(category));
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? category,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10) =>
+        Ok(await _parts.GetAllAsync(category, page, pageSize));
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
