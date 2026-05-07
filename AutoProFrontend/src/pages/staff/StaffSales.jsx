@@ -28,7 +28,7 @@ export default function StaffSales() {
   const custRef = useRef(null);
 
   useEffect(() => {
-    Promise.all([getSales(), getParts(), getCustomers()]).then(([s, p, c]) => {
+    Promise.all([getSales(), getParts(1, 1000).then(r => r.data), getCustomers()]).then(([s, p, c]) => {
       setInvoices(s);
       setParts(p.map(pt => ({ ...pt, qty: 0 })));
       setCustomers(c);
