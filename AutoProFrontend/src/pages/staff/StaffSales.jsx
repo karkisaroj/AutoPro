@@ -179,6 +179,13 @@ export default function StaffSales() {
           <ShoppingCart size={16} className="text-primary" />
           <h2 className="font-display font-bold text-foreground">Invoice History</h2>
         </div>
+        {invoices.length === 0 ? (
+          <div className="py-16 flex flex-col items-center gap-2 text-muted-foreground">
+            <ShoppingCart size={32} className="opacity-30" />
+            <p className="text-sm font-semibold">No invoices yet</p>
+            <p className="text-xs">Create a new sale to get started.</p>
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full data-table">
             <thead>
@@ -229,6 +236,7 @@ export default function StaffSales() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* ── New Sale Modal ── */}
