@@ -24,12 +24,17 @@ function SectionDivider({ label }) {
   );
 }
 
+const PAGE_SIZE = 10;
+
 export default function AdminParts() {
-  const [parts,     setParts]     = useState([]);
-  const [vendors,   setVendors]   = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [search,    setSearch]    = useState('');
-  const [catFilter, setCatFilter] = useState('All');
+  const [parts,      setParts]      = useState([]);
+  const [vendors,    setVendors]    = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [search,     setSearch]     = useState('');
+  const [catFilter,  setCatFilter]  = useState('All');
+  const [page,       setPage]       = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Part add/edit modal
   const [modal,     setModal]     = useState(false);
@@ -49,12 +54,21 @@ export default function AdminParts() {
   const [poSuccess, setPoSuccess] = useState(null);
 
   useEffect(() => {
-    Promise.all([getParts(), getVendors()]).then(([partsData, vendorsData]) => {
-      setParts(partsData);
-      setVendors(vendorsData);
-      setLoading(false);
-    });
-  }, []);
+    setLoading(true);
+    const category = catFilter === 'All' ? null : catFilter;
+    Promise.all([getParts(page, PAGE_SIZE, category), getVendors()])
+      .then(([partsRes, vendorsData]) => {
+        setParts(partsRes.data);
+        setTotalPages(partsRes.totalPages);
+        setTotalCount(partsRes.totalCount);
+        setVendors(vendorsData);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [page, catFilter]);
+
+  // When category changes, go back to page 1
+  const handleCatChange = (newCat) => { setCatFilter(newCat); setPage(1); };
 
   // Vendor helpers
   const activeVendors = vendors.filter(v => v.status === 'Active');
@@ -63,18 +77,17 @@ export default function AdminParts() {
     return byCategory.length > 0 ? byCategory : activeVendors;
   })();
 
-  // ── Filtering ────────────────────────────────────────────────────────────
+  // ── Filtering ─────────────────────────────────────────────────────────────
+  // Category filtering is handled server-side; search filters within the loaded page
   const filtered = parts.filter(p => {
     const q = search.toLowerCase();
-    const matchSearch = p.name.toLowerCase().includes(q) ||
+    return p.name.toLowerCase().includes(q) ||
       (p.sku || '').toLowerCase().includes(q) ||
       (p.supplier || '').toLowerCase().includes(q);
-    const matchCat = catFilter === 'All' || p.category === catFilter;
-    return matchSearch && matchCat;
   });
 
   const lowStock = parts.filter(p => p.quantity <= p.minStock);
-  const cats     = ['All', ...new Set(parts.map(p => p.category))];
+  const tabs     = ['All', ...CATEGORIES];
 
   // ── Part CRUD ─────────────────────────────────────────────────────────────
   const openAdd = () => {
@@ -107,6 +120,14 @@ export default function AdminParts() {
     }));
   };
 
+  const refreshParts = async () => {
+    const category = catFilter === 'All' ? null : catFilter;
+    const res = await getParts(page, PAGE_SIZE, category);
+    setParts(res.data);
+    setTotalPages(res.totalPages);
+    setTotalCount(res.totalCount);
+  };
+
   const handleSave = async () => {
     if (!form.name.trim() || !form.sku.trim()) return;
     setSaving(true);
@@ -114,12 +135,11 @@ export default function AdminParts() {
     try {
       const payload = { ...form, vendorId: Number(form.vendorId) || undefined };
       if (editing) {
-        const updated = await updatePart(editing, payload);
-        setParts(prev => prev.map(p => p.id === editing ? { ...p, ...updated } : p));
+        await updatePart(editing, payload);
       } else {
-        const created = await createPart(payload);
-        setParts(prev => [...prev, created]);
+        await createPart(payload);
       }
+      await refreshParts();
       setModal(false);
     } catch (err) {
       setSaveError(err?.message || 'Failed to save. Please try again.');
@@ -130,7 +150,7 @@ export default function AdminParts() {
 
   const handleDelete = async () => {
     await deletePart(confirm.id);
-    setParts(prev => prev.filter(p => p.id !== confirm.id));
+    await refreshParts();
     setConfirm(null);
   };
 
@@ -171,7 +191,7 @@ export default function AdminParts() {
   // ── Stats ─────────────────────────────────────────────────────────────────
   const invValue = parts.reduce((a, p) => a + (p.price * p.quantity), 0);
   const stats = [
-    { label: 'Total Parts',     value: parts.length.toString(),                     color: 'violet',  icon: Package       },
+    { label: 'Total Parts',     value: totalCount.toString(),                        color: 'violet',  icon: Package       },
     { label: 'Low Stock Items', value: lowStock.length.toString(),                   color: 'red',     icon: AlertTriangle },
     { label: 'Categories',      value: CATEGORIES.length.toString(),                 color: 'blue',    icon: Layers        },
     { label: 'Inventory Value', value: `NPR ${(invValue / 1000).toFixed(0)}K`,      color: 'emerald', icon: Tag           },
@@ -210,10 +230,10 @@ export default function AdminParts() {
           <h2 className="font-display font-bold text-foreground">Parts List</h2>
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1 overflow-x-auto">
-              {cats.map(c => (
+              {tabs.map(c => (
                 <button
                   key={c}
-                  onClick={() => setCatFilter(c)}
+                  onClick={() => handleCatChange(c)}
                   className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                     catFilter === c ? 'bg-primary text-white' : 'bg-muted text-muted-foreground hover:bg-card-hover'
                   }`}
@@ -293,6 +313,31 @@ export default function AdminParts() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination bar — only shown when there is more than one page */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-3 border-t border-border">
+            <p className="text-xs text-muted-foreground">
+              Page {page} of {totalPages} · {totalCount} parts
+            </p>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setPage(p => p - 1)}
+                disabled={page === 1}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                ← Prev
+              </button>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Part Add / Edit Modal ─────────────────────────────────────────── */}
