@@ -4,11 +4,26 @@ import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext(null);
 
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
       const stored = localStorage.getItem('authUser');
-      return stored ? JSON.parse(stored) : null;
+      const token = localStorage.getItem('authToken');
+      if (!stored || !token || isTokenExpired(token)) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+        return null;
+      }
+      return JSON.parse(stored);
     } catch {
       return null;
     }

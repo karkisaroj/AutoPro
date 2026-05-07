@@ -21,9 +21,19 @@ export async function apiFetch(endpoint, options = {}) {
     },
     ...options,
   });
+
+  if (res.status === 401) {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
+    window.location.href = '/login';
+    return;
+  }
+
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error(error.message || 'API request failed');
   }
+
+  if (res.status === 204) return null;
   return res.json();
 }

@@ -1,7 +1,10 @@
 import { apiFetch } from './api';
 
-export const getFinancialReport = () =>
-  apiFetch('/api/reports/financial').then(data => ({
+export const getFinancialReport = (period = 'monthly', year, month) => {
+  const params = new URLSearchParams({ period });
+  if (year) params.set('year', year);
+  if (month) params.set('month', month);
+  return apiFetch(`/api/reports/financial?${params}`).then(data => ({
     summary: {
       totalRevenue: data.totalRevenue,
       totalExpenses: data.totalExpenses,
@@ -15,9 +18,11 @@ export const getFinancialReport = () =>
       revenue: entry.revenue,
       expenses: 0,
     })),
+    breakdown: data.dailyBreakdown || [],
     serviceBreakdown: [],
     topStaff: [],
   }));
+};
 
 export const getCustomerReport = () =>
   apiFetch('/api/reports/customers').then(data => ({
