@@ -127,12 +127,16 @@ export default function StaffSales() {
 
   return (
     <div className="space-y-6 page-enter">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <PageHeader eyebrow="Staff" title="Sales & Invoices" subtitle="Create and manage sales invoices." />
-        <button onClick={() => setShowNew(true)} className="btn-primary">
-          <Plus size={16} /> New Sale
-        </button>
-      </div>
+      <PageHeader
+        eyebrow="Staff"
+        title="Sales & Invoices"
+        subtitle="Create and manage sales invoices."
+        actions={
+          <button onClick={() => setShowNew(true)} className="btn-primary">
+            <Plus size={16} /> New Sale
+          </button>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
