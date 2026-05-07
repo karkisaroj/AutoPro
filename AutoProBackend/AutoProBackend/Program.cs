@@ -1,10 +1,10 @@
 using AutoProBackend.Data;
 using AutoProBackend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using QuestPDF.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using QuestPDF.Infrastructure;
 using System.Text;
 
 QuestPDF.Settings.License = LicenseType.Community;
@@ -35,6 +35,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IReportPdfService, ReportPdfService>();
+builder.Services.AddScoped<IVendorService, VendorService>();
+builder.Services.AddScoped<IPartsService, PartsService>();
+builder.Services.AddScoped<IStaffService, StaffService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+builder.Services.AddScoped<ISalesService, SalesService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddControllers();
 
 // CORS for React frontend

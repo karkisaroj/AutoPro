@@ -42,11 +42,11 @@ export default function AdminParts() {
   const [confirm,   setConfirm]   = useState(null);
 
   // Purchase Order modal
-  const [poTarget,  setPoTarget]  = useState(null); // the part being ordered
+  const [poTarget,  setPoTarget]  = useState(null);
   const [poForm,    setPoForm]    = useState(EMPTY_PO_FORM);
   const [poSaving,  setPoSaving]  = useState(false);
   const [poError,   setPoError]   = useState(null);
-  const [poSuccess, setPoSuccess] = useState(null); // PO id after creation
+  const [poSuccess, setPoSuccess] = useState(null);
 
   useEffect(() => {
     Promise.all([getParts(), getVendors()]).then(([partsData, vendorsData]) => {
@@ -375,7 +375,6 @@ export default function AdminParts() {
       {poTarget && (
         <Modal title="Generate Purchase Order" onClose={() => setPoTarget(null)} icon={FileText}>
           {poSuccess ? (
-            /* Success screen */
             <div className="py-6 flex flex-col items-center text-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                 <CheckCircle size={28} className="text-emerald-600 dark:text-emerald-400" />
@@ -398,7 +397,6 @@ export default function AdminParts() {
                 </div>
               )}
 
-              {/* Part summary (read-only) */}
               <div className="bg-muted/40 border border-border rounded-xl p-3 flex items-start gap-3">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0">
                   <Package size={14} className="text-white" />
@@ -411,7 +409,6 @@ export default function AdminParts() {
                 </div>
               </div>
 
-              {/* Vendor (read-only) */}
               <div>
                 <label className="form-label">Vendor</label>
                 <div className="form-input text-sm text-muted-foreground bg-muted/30 select-none">

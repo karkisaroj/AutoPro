@@ -12,7 +12,7 @@
 *.exe
 *.pdb
 
-
+# ── EF Core Migrations snapshot (keep migrations, skip designer noise) ───────
 # Uncomment below only if you want to ignore migrations entirely:
 # Migrations/
 

@@ -40,7 +40,7 @@ export default function StaffCustomers() {
   const [query,     setQuery]     = useState('');
   const [saving,    setSaving]    = useState(false);
   const [formError, setFormError] = useState(null);
-  const [banner,    setBanner]    = useState(null); // { type: 'success'|'warn', msg }
+  const [banner,    setBanner]    = useState(null);
 
   useEffect(() => {
     getCustomers()
@@ -77,7 +77,6 @@ export default function StaffCustomers() {
 
   // ── Save with full exception handling ────────────────────────────────────
   const save = async () => {
-    // Client-side validation
     if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !form.password.trim()) {
       setFormError('Full name, email, phone, and password are required.');
       return;
@@ -95,10 +94,8 @@ export default function StaffCustomers() {
     setFormError(null);
 
     try {
-      // Step 1 — create customer account
       const created = await createCustomer(form);
 
-      // Step 2 — optionally register vehicle
       if (form.vehicleType.trim() && form.plateNo.trim()) {
         try {
           await addVehicle(created.id, {
@@ -107,8 +104,6 @@ export default function StaffCustomers() {
             registrationDate: new Date().toISOString().split('T')[0],
           });
         } catch (vehicleErr) {
-          // Customer was created but vehicle failed (e.g. duplicate plate)
-          // Refresh list so the new customer appears, then warn
           const refreshed = await getCustomers();
           setCustomers(refreshed);
           setShowModal(false);
@@ -121,14 +116,12 @@ export default function StaffCustomers() {
         }
       }
 
-      // Full success
       const refreshed = await getCustomers();
       setCustomers(refreshed);
       setShowModal(false);
       setForm(EMPTY_FORM);
       setBanner({ type: 'success', msg: `${created.name} has been registered successfully.` });
     } catch (err) {
-      // createCustomer failed — most likely "Email already registered"
       setFormError(err?.message || 'Registration failed. Please try again.');
     } finally {
       setSaving(false);
@@ -320,7 +313,6 @@ export default function StaffCustomers() {
         <Modal title="Register New Customer" onClose={() => setShowModal(false)} icon={UserPlus}>
           <div className="space-y-4">
 
-            {/* Error banner */}
             {formError && (
               <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-2.5">
                 <X size={14} className="flex-shrink-0 mt-0.5" />
@@ -328,7 +320,6 @@ export default function StaffCustomers() {
               </div>
             )}
 
-            {/* Personal Details */}
             <SectionDivider label="Personal Details" />
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
@@ -373,7 +364,6 @@ export default function StaffCustomers() {
               </div>
             </div>
 
-            {/* Account Access */}
             <SectionDivider label="Account Access" />
             <div>
               <label className="form-label">Password <span className="text-red-500">*</span></label>
@@ -389,7 +379,6 @@ export default function StaffCustomers() {
               </p>
             </div>
 
-            {/* Vehicle Details */}
             <SectionDivider label="Vehicle Details — Optional" />
             <div className="grid grid-cols-2 gap-3">
               <div>

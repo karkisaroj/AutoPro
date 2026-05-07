@@ -1,9 +1,7 @@
-using AutoProBackend.Data;
 using AutoProBackend.DTOs;
-using AutoProBackend.Models;
+using AutoProBackend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace AutoProBackend.Controllers;
 
@@ -12,104 +10,39 @@ namespace AutoProBackend.Controllers;
 [Authorize(Roles = "Admin")]
 public class VendorsController : ControllerBase
 {
-    private readonly AppDbContext _db;
-
-    public VendorsController(AppDbContext db) => _db = db;
+    private readonly IVendorService _vendors;
+    public VendorsController(IVendorService vendors) => _vendors = vendors;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] bool? activeOnly)
-    {
-        var query = _db.Vendors.AsQueryable();
-
-        if (activeOnly == true)
-            query = query.Where(v => v.IsActive);
-
-        var vendors = await query.Select(v => MapToResponse(v)).ToListAsync();
-        return Ok(vendors);
-    }
+    public async Task<IActionResult> GetAll([FromQuery] bool? activeOnly) =>
+        Ok(await _vendors.GetAllAsync(activeOnly));
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var vendor = await _db.Vendors.FindAsync(id);
-        if (vendor == null) return NotFound();
-        return Ok(MapToResponse(vendor));
+        var vendor = await _vendors.GetByIdAsync(id);
+        return vendor == null ? NotFound() : Ok(vendor);
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateVendorRequest req)
     {
-        var vendor = new Vendor
-        {
-            Name = req.Name,
-            ContactPerson = req.ContactPerson,
-            Phone = req.Phone,
-            Email = req.Email,
-            Address = req.Address,
-            Category = req.Category,
-            PaymentTerms = req.PaymentTerms
-        };
-        _db.Vendors.Add(vendor);
-        await _db.SaveChangesAsync();
-
-        return Created($"/api/vendors/{vendor.Id}", MapToResponse(vendor));
+        var vendor = await _vendors.CreateAsync(req);
+        return Created($"/api/vendors/{vendor.Id}", vendor);
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateVendorRequest req)
-    {
-        var vendor = await _db.Vendors.FindAsync(id);
-        if (vendor == null) return NotFound();
-
-        if (req.Name != null) vendor.Name = req.Name;
-        if (req.ContactPerson != null) vendor.ContactPerson = req.ContactPerson;
-        if (req.Phone != null) vendor.Phone = req.Phone;
-        if (req.Email != null) vendor.Email = req.Email;
-        if (req.Address != null) vendor.Address = req.Address;
-        if (req.Category != null) vendor.Category = req.Category;
-        if (req.PaymentTerms != null) vendor.PaymentTerms = req.PaymentTerms;
-
-        await _db.SaveChangesAsync();
-        return NoContent();
-    }
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateVendorRequest req) =>
+        await _vendors.UpdateAsync(id, req) ? NoContent() : NotFound();
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var vendor = await _db.Vendors.FindAsync(id);
-        if (vendor == null) return NotFound();
-
-        _db.Vendors.Remove(vendor);
-        await _db.SaveChangesAsync();
-        return NoContent();
-    }
+    public async Task<IActionResult> Delete(int id) =>
+        await _vendors.DeleteAsync(id) ? NoContent() : NotFound();
 
     [HttpPatch("{id}/toggle-status")]
     public async Task<IActionResult> ToggleStatus(int id)
     {
-        var vendor = await _db.Vendors.FindAsync(id);
-        if (vendor == null) return NotFound();
-
-        vendor.IsActive = !vendor.IsActive;
-        await _db.SaveChangesAsync();
-
-        return Ok(new { isActive = vendor.IsActive });
+        var result = await _vendors.ToggleStatusAsync(id);
+        return result == null ? NotFound() : Ok(new { isActive = result });
     }
-
-    private static VendorResponse MapToResponse(Vendor v) => new()
-    {
-        Id = v.Id,
-        Name = v.Name,
-        ContactPerson = v.ContactPerson,
-        Phone = v.Phone,
-        Email = v.Email,
-        Address = v.Address,
-        Category = v.Category,
-        Rating = v.Rating,
-        TotalOrders = v.TotalOrders,
-        LastOrder = v.LastOrder,
-        TotalSpent = v.TotalSpent,
-        IsActive = v.IsActive,
-        PaymentTerms = v.PaymentTerms
-    };
 }

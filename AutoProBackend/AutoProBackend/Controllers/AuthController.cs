@@ -37,7 +37,7 @@ public class AuthController : ControllerBase
 
         var name = user.Customer?.Name ?? user.Staff?.Name ?? user.Email;
         var profileId = user.Customer?.Id ?? user.Staff?.Id;
-        var token = GenerateToken(user, name);
+        var token = GenerateToken(user, name, user.Role.Name);
 
         return Ok(new AuthResponse
         {
@@ -80,7 +80,7 @@ public class AuthController : ControllerBase
         _db.Customers.Add(customer);
         await _db.SaveChangesAsync();
 
-        var token = GenerateToken(user, customer.Name);
+        var token = GenerateToken(user, customer.Name, customerRole.Name);
 
         return Created(string.Empty, new AuthResponse
         {
@@ -93,7 +93,7 @@ public class AuthController : ControllerBase
         });
     }
 
-    private string GenerateToken(User user, string name)
+    private string GenerateToken(User user, string name, string roleName)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -102,7 +102,7 @@ public class AuthController : ControllerBase
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Role, user.Role?.Name ?? "Customer"),
+            new Claim(ClaimTypes.Role, roleName),
             new Claim("name", name)
         };
 
