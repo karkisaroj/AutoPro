@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingCart, Plus, Send, Check, X, Tag, TrendingUp, Clock, Search, ChevronDown, FileText } from 'lucide-react';
+import { ShoppingCart, Send, Check, X, Tag, TrendingUp, Clock, Search, ChevronDown, FileText, Package } from 'lucide-react';
 import { getSales, createSale, sendInvoiceEmail, downloadSaleInvoicePdf } from '../../services/salesService';
 import { getParts } from '../../services/partsService';
 import { getCustomers } from '../../services/customerService';
@@ -10,21 +10,21 @@ const TODAY = new Date().toISOString().split('T')[0];
 const PAYMENT_METHODS = ['Cash', 'Card', 'Credit'];
 
 export default function StaffSales() {
-  const [invoices, setInvoices]       = useState([]);
-  const [parts, setParts]             = useState([]);
-  const [customers, setCustomers]     = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [showNew, setShowNew]         = useState(false);
-  const [showEmail, setShowEmail]     = useState(null);
-  const [emailSending, setEmailSending] = useState(false);
-  const [toast, setToast]             = useState(null);
+  const [invoices, setInvoices]           = useState([]);
+  const [parts, setParts]                 = useState([]);
+  const [customers, setCustomers]         = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [showNew, setShowNew]             = useState(false);
+  const [showEmail, setShowEmail]         = useState(null);
+  const [emailSending, setEmailSending]   = useState(false);
+  const [toast, setToast]                 = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
 
   /* Form state */
   const [customerSearch, setCustomerSearch]     = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showCustDrop, setShowCustDrop]         = useState(false);
-  const [cart, setCart]                         = useState([]);
+  const [partsSearch, setPartsSearch]           = useState('');
   const [paymentMethod, setPaymentMethod]       = useState('Cash');
   const [saving, setSaving]                     = useState(false);
   const custRef = useRef(null);
@@ -56,6 +56,11 @@ export default function StaffSales() {
     c.phone.includes(customerSearch)
   );
 
+  const filteredParts = parts.filter(p =>
+    p.name.toLowerCase().includes(partsSearch.toLowerCase()) ||
+    (p.category || '').toLowerCase().includes(partsSearch.toLowerCase())
+  );
+
   const selectCustomer = (c) => {
     setSelectedCustomer(c);
     setCustomerSearch(c.name);
@@ -79,7 +84,7 @@ export default function StaffSales() {
   const resetForm = () => {
     setSelectedCustomer(null);
     setCustomerSearch('');
-    setCart([]);
+    setPartsSearch('');
     setParts(prev => prev.map(p => ({ ...p, qty: 0 })));
     setPaymentMethod('Cash');
   };
@@ -96,7 +101,7 @@ export default function StaffSales() {
       setInvoices(prev => [created, ...prev]);
       setShowNew(false);
       resetForm();
-      setToast({ type: 'success', msg: `Invoice created for ${selectedCustomer.name}!` });
+      setToast({ type: 'success', msg: `Sale completed — invoice generated for ${selectedCustomer.name}!` });
     } finally {
       setSaving(false);
     }
@@ -107,7 +112,7 @@ export default function StaffSales() {
     try {
       await downloadSaleInvoicePdf(inv.id);
     } catch {
-      setToast({ type: 'error', msg: 'Failed to download PDF.' });
+      setToast({ type: 'error', msg: 'Failed to download invoice.' });
     } finally {
       setDownloadingId(null);
     }
@@ -132,15 +137,15 @@ export default function StaffSales() {
   const todayRev = paid.filter(i => i.date === TODAY).reduce((s, i) => s + i.total, 0);
 
   const stats = [
-    { label: "Today's Revenue",  value: `NPR ${todayRev.toLocaleString()}`, color: 'blue',    icon: TrendingUp  },
-    { label: 'Paid Invoices',    value: paid.length.toString(),              color: 'emerald', icon: Check       },
-    { label: 'Pending Invoices', value: pending.length.toString(),           color: 'amber',   icon: Clock       },
-    { label: 'Total Sales',      value: invoices.length.toString(),          color: 'violet',  icon: ShoppingCart},
+    { label: "Today's Revenue",  value: `NPR ${todayRev.toLocaleString()}`, color: 'blue',    icon: TrendingUp   },
+    { label: 'Paid Invoices',    value: paid.length.toString(),              color: 'emerald', icon: Check        },
+    { label: 'Pending Invoices', value: pending.length.toString(),           color: 'amber',   icon: Clock        },
+    { label: 'Total Sales',      value: invoices.length.toString(),          color: 'violet',  icon: ShoppingCart },
   ];
 
   if (loading) return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Staff" title="Sales & Invoices" subtitle="Create and manage sales invoices." />
+      <PageHeader eyebrow="Staff" title="Sales & Invoices" subtitle="Sell parts and manage invoices." />
       <Spinner />
     </div>
   );
@@ -157,13 +162,14 @@ export default function StaffSales() {
           {toast.msg}
         </div>
       )}
+
       <PageHeader
         eyebrow="Staff"
         title="Sales & Invoices"
-        subtitle="Create and manage sales invoices."
+        subtitle="Sell parts to customers and generate invoices."
         actions={
           <button onClick={() => setShowNew(true)} className="btn-primary">
-            <Plus size={16} /> New Sale
+            <ShoppingCart size={16} /> Sell Parts
           </button>
         }
       />
@@ -183,76 +189,89 @@ export default function StaffSales() {
           <div className="py-16 flex flex-col items-center gap-2 text-muted-foreground">
             <ShoppingCart size={32} className="opacity-30" />
             <p className="text-sm font-semibold">No invoices yet</p>
-            <p className="text-xs">Create a new sale to get started.</p>
+            <p className="text-xs">Sell parts to a customer to get started.</p>
           </div>
         ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full data-table">
-            <thead>
-              <tr>{['Invoice', 'Customer', 'Date', 'Subtotal', 'Discount', 'VAT', 'Total', 'Status', 'PDF', 'Email'].map(h => <th key={h}>{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {invoices.map(inv => (
-                <tr key={inv.id}>
-                  <td className="font-mono text-xs text-muted-foreground">#{inv.id}</td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <Avatar name={inv.customerName} size="sm" color="blue" />
-                      <span className="font-semibold text-foreground text-xs">{inv.customerName}</span>
-                    </div>
-                  </td>
-                  <td className="text-xs">{inv.date}</td>
-                  <td className="text-xs text-muted-foreground">NPR {inv.subtotal?.toLocaleString()}</td>
-                  <td>
-                    {inv.loyaltyDiscount > 0
-                      ? <span className="flex items-center gap-1 text-emerald-600 font-bold text-xs"><Tag size={10} /> NPR {inv.loyaltyDiscount.toLocaleString()}</span>
-                      : <span className="text-muted-foreground">—</span>}
-                  </td>
-                  <td className="text-xs text-muted-foreground">NPR {inv.tax?.toLocaleString() ?? 0}</td>
-                  <td className="font-bold text-foreground">NPR {inv.total.toLocaleString()}</td>
-                  <td><StatusBadge status={inv.status} /></td>
-                  <td>
-                    <button
-                      onClick={() => handleDownloadPdf(inv)}
-                      disabled={downloadingId === inv.id}
-                      className="flex items-center gap-1 text-violet-600 dark:text-violet-400 text-xs font-bold hover:underline disabled:opacity-40"
-                    >
-                      {downloadingId === inv.id
-                        ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                        : <FileText size={11} />}
-                      PDF
-                    </button>
-                  </td>
-                  <td>
-                    <button
-                      onClick={() => setShowEmail(inv)}
-                      className="flex items-center gap-1 text-primary text-xs font-bold hover:underline"
-                    >
-                      <Send size={11} /> Send
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          <div className="overflow-x-auto">
+            <table className="w-full data-table">
+              <thead>
+                <tr>{['Invoice', 'Customer', 'Date', 'Subtotal', 'Discount', 'VAT', 'Total', 'Status', 'Invoice', 'Email'].map(h => <th key={h}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {invoices.map(inv => (
+                  <tr key={inv.id}>
+                    <td className="font-mono text-xs text-muted-foreground">#{inv.id}</td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <Avatar name={inv.customerName} size="sm" color="blue" />
+                        <span className="font-semibold text-foreground text-xs">{inv.customerName}</span>
+                      </div>
+                    </td>
+                    <td className="text-xs">{inv.date}</td>
+                    <td className="text-xs text-muted-foreground">NPR {inv.subtotal?.toLocaleString()}</td>
+                    <td>
+                      {inv.loyaltyDiscount > 0
+                        ? <span className="flex items-center gap-1 text-emerald-600 font-bold text-xs"><Tag size={10} /> NPR {inv.loyaltyDiscount.toLocaleString()}</span>
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="text-xs text-muted-foreground">NPR {inv.tax?.toLocaleString() ?? 0}</td>
+                    <td className="font-bold text-foreground">NPR {inv.total.toLocaleString()}</td>
+                    <td><StatusBadge status={inv.status} /></td>
+                    <td>
+                      <button
+                        onClick={() => handleDownloadPdf(inv)}
+                        disabled={downloadingId === inv.id}
+                        className="flex items-center gap-1 text-violet-600 dark:text-violet-400 text-xs font-bold hover:underline disabled:opacity-40"
+                      >
+                        {downloadingId === inv.id
+                          ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                          : <FileText size={11} />}
+                        Invoice
+                      </button>
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => setShowEmail(inv)}
+                        className="flex items-center gap-1 text-primary text-xs font-bold hover:underline"
+                      >
+                        <Send size={11} /> Send
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* ── New Sale Modal ── */}
+      {/* ── Sell Parts Modal ── */}
       {showNew && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { setShowNew(false); resetForm(); }} />
           <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto z-10">
+
+            {/* Modal header */}
             <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between z-10">
-              <h3 className="text-lg font-display font-black text-foreground">Create New Sale</h3>
-              <button onClick={() => { setShowNew(false); resetForm(); }} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <ShoppingCart size={17} className="text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-base font-display font-black text-foreground leading-tight">Sell Parts</h3>
+                  <p className="text-xs text-muted-foreground">Select customer, parts, and payment method</p>
+                </div>
+              </div>
+              <button onClick={() => { setShowNew(false); resetForm(); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                <X size={18} />
+              </button>
             </div>
 
-            <div className="p-6 space-y-5">
-              {/* Customer search */}
+            <div className="p-6 space-y-6">
+
+              {/* — Customer — */}
               <div>
-                <label className="form-label">Customer</label>
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Customer</p>
                 <div className="relative" ref={custRef}>
                   <div className="relative">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -260,8 +279,8 @@ export default function StaffSales() {
                       value={customerSearch}
                       onChange={e => { setCustomerSearch(e.target.value); setSelectedCustomer(null); setShowCustDrop(true); }}
                       onFocus={() => setShowCustDrop(true)}
-                      placeholder="Search customer by name or phone..."
-                      className="form-input pl-8"
+                      placeholder="Search by name or phone…"
+                      className="form-input pl-9"
                     />
                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   </div>
@@ -284,48 +303,64 @@ export default function StaffSales() {
                   )}
                 </div>
                 {selectedCustomer && (
-                  <p className="text-xs text-emerald-600 font-semibold mt-1.5">
-                    ✓ {selectedCustomer.name} · Total spent: NPR {selectedCustomer.totalSpent?.toLocaleString()} · {selectedCustomer.tier}
-                  </p>
+                  <div className="mt-2 flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl px-3 py-2">
+                    <Check size={13} className="text-emerald-600 flex-shrink-0" />
+                    <p className="text-xs text-emerald-700 dark:text-emerald-300 font-semibold">
+                      {selectedCustomer.name}
+                    </p>
+                    <span className="text-emerald-600/60 text-xs">·</span>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                      Spent NPR {selectedCustomer.totalSpent?.toLocaleString()} · {selectedCustomer.tier}
+                    </p>
+                  </div>
                 )}
               </div>
 
-              {/* Payment method */}
+              {/* — Parts — */}
               <div>
-                <label className="form-label">Payment Method</label>
-                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="form-select">
-                  {PAYMENT_METHODS.map(m => <option key={m}>{m}</option>)}
-                </select>
-              </div>
-
-              {/* Parts selection */}
-              <div>
-                <label className="form-label">Select Parts</label>
-                <div className="border border-border rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                  Parts {cartItems.length > 0 && <span className="ml-1 text-primary">{cartItems.length} selected</span>}
+                </p>
+                <div className="relative mb-2">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    value={partsSearch}
+                    onChange={e => setPartsSearch(e.target.value)}
+                    placeholder="Filter by name or category…"
+                    className="form-input pl-9 py-2 text-xs"
+                  />
+                </div>
+                <div className="border border-border rounded-xl overflow-hidden max-h-52 overflow-y-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted/50 sticky top-0">
+                    <thead className="bg-muted/60 sticky top-0">
                       <tr>
                         {['Part', 'Stock', 'Price', 'Qty'].map(h => (
-                          <th key={h} className="text-left px-4 py-2 text-xs font-bold text-muted-foreground">{h}</th>
+                          <th key={h} className="text-left px-4 py-2 text-[11px] font-bold text-muted-foreground">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {parts.map(p => (
-                        <tr key={p.id} className={`border-t border-border ${p.qty > 0 ? 'bg-emerald-50 dark:bg-emerald-900/10' : ''}`}>
-                          <td className="px-4 py-2">
-                            <p className="font-medium text-foreground text-xs">{p.name}</p>
+                      {filteredParts.length === 0 ? (
+                        <tr><td colSpan={4} className="text-center text-xs text-muted-foreground py-6">No parts match your search</td></tr>
+                      ) : filteredParts.map(p => (
+                        <tr key={p.id} className={`border-t border-border transition-colors ${p.qty > 0 ? 'bg-emerald-50 dark:bg-emerald-900/10' : 'hover:bg-muted/20'}`}>
+                          <td className="px-4 py-2.5">
+                            <p className="font-semibold text-foreground text-xs">{p.name}</p>
                             <p className="text-[10px] text-muted-foreground">{p.category}</p>
                           </td>
-                          <td className="px-4 py-2 text-xs text-muted-foreground">{p.quantity}</td>
-                          <td className="px-4 py-2 text-xs font-semibold text-foreground">NPR {p.price?.toLocaleString()}</td>
-                          <td className="px-4 py-2">
-                            <div className="flex items-center gap-1">
+                          <td className="px-4 py-2.5">
+                            <span className={`text-xs font-medium ${p.quantity === 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                              {p.quantity}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-xs font-semibold text-foreground">NPR {p.price?.toLocaleString()}</td>
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center gap-1.5">
                               <button onClick={() => updateQty(p.id, -1)} disabled={p.qty === 0}
-                                className="w-6 h-6 rounded-md bg-muted hover:bg-muted/80 text-foreground font-bold text-sm flex items-center justify-center disabled:opacity-30">−</button>
-                              <span className="w-6 text-center text-xs font-bold text-foreground">{p.qty}</span>
+                                className="w-6 h-6 rounded-lg bg-muted hover:bg-muted/80 text-foreground font-bold text-sm flex items-center justify-center disabled:opacity-30 cursor-pointer">−</button>
+                              <span className="w-5 text-center text-xs font-bold text-foreground">{p.qty}</span>
                               <button onClick={() => updateQty(p.id, 1)} disabled={p.qty >= p.quantity}
-                                className="w-6 h-6 rounded-md bg-primary text-white font-bold text-sm flex items-center justify-center disabled:opacity-30">+</button>
+                                className="w-6 h-6 rounded-lg bg-primary hover:bg-primary/90 text-white font-bold text-sm flex items-center justify-center disabled:opacity-30 cursor-pointer">+</button>
                             </div>
                           </td>
                         </tr>
@@ -335,11 +370,50 @@ export default function StaffSales() {
                 </div>
               </div>
 
-              {/* Price summary */}
+              {/* — Cart summary — */}
+              {cartItems.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Cart</p>
+                  <div className="space-y-1.5">
+                    {cartItems.map(p => (
+                      <div key={p.id} className="flex items-center justify-between bg-muted/30 border border-border rounded-xl px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <Package size={12} className="text-muted-foreground flex-shrink-0" />
+                          <span className="text-xs font-medium text-foreground">{p.name}</span>
+                          <span className="text-[10px] text-muted-foreground bg-muted rounded-md px-1.5 py-0.5">×{p.qty}</span>
+                        </div>
+                        <span className="text-xs font-bold text-foreground">NPR {(p.price * p.qty).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* — Payment method — */}
+              <div>
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Payment Method</p>
+                <div className="flex gap-2">
+                  {PAYMENT_METHODS.map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setPaymentMethod(m)}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors cursor-pointer ${
+                        paymentMethod === m
+                          ? 'bg-primary text-white border-primary shadow-sm'
+                          : 'bg-card text-muted-foreground border-border hover:bg-muted'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* — Price summary — */}
               {cartItems.length > 0 && (
                 <div className="bg-muted/30 border border-border rounded-xl px-4 py-3 space-y-1.5">
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Subtotal ({cartItems.length} item{cartItems.length > 1 ? 's' : ''})</span>
+                    <span>Subtotal ({cartItems.length} item{cartItems.length !== 1 ? 's' : ''})</span>
                     <span>NPR {subtotal.toLocaleString()}</span>
                   </div>
                   {loyaltyDisc > 0 && (
@@ -352,19 +426,29 @@ export default function StaffSales() {
                     <span>VAT (13%)</span>
                     <span>NPR {vat.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between font-black text-foreground text-base pt-1.5 border-t border-border">
-                    <span>Total</span><span>NPR {total.toLocaleString()}</span>
+                  <div className="flex justify-between font-black text-foreground text-base pt-2 border-t border-border">
+                    <span>Total</span>
+                    <span>NPR {total.toLocaleString()}</span>
                   </div>
-                  {subtotal >= 5000 && <p className="text-xs text-emerald-600 italic">🎉 10% loyalty discount applied (spend &gt; NPR 5,000)</p>}
+                  {subtotal >= 5000 && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium pt-0.5">
+                      10% loyalty discount applied (subtotal &gt; NPR 5,000)
+                    </p>
+                  )}
                 </div>
               )}
 
               <div className="flex gap-3 pt-1">
                 <button onClick={() => { setShowNew(false); resetForm(); }} className="btn-secondary flex-1">Cancel</button>
-                <button onClick={saveInvoice} disabled={!selectedCustomer || cartItems.length === 0 || saving}
-                  className="btn-primary flex-1 disabled:opacity-50">
-                  {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Check size={16} />}
-                  Create Invoice
+                <button
+                  onClick={saveInvoice}
+                  disabled={!selectedCustomer || cartItems.length === 0 || saving}
+                  className="btn-primary flex-1 disabled:opacity-50"
+                >
+                  {saving
+                    ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <Check size={16} />}
+                  Confirm Sell
                 </button>
               </div>
             </div>
