@@ -13,11 +13,13 @@ public class SalesController : ControllerBase
 {
     private readonly ISalesService _sales;
     private readonly ICustomerService _customers;
+    private readonly IReportPdfService _pdf;
 
-    public SalesController(ISalesService sales, ICustomerService customers)
+    public SalesController(ISalesService sales, ICustomerService customers, IReportPdfService pdf)
     {
         _sales = sales;
         _customers = customers;
+        _pdf = pdf;
     }
 
     [HttpGet]
@@ -56,6 +58,19 @@ public class SalesController : ControllerBase
         if (forbidden) return Forbid();
         if (errorMessage != null) return BadRequest(new { message = errorMessage });
         return Created($"/api/sales/{response!.Id}", response);
+    }
+
+    [HttpGet("{id}/pdf")]
+    public async Task<IActionResult> GetInvoicePdf(int id)
+    {
+        var sale = await _sales.GetByIdAsync(id);
+        if (sale == null) return NotFound();
+
+        if (User.IsInRole("Customer") && sale.CustomerId != await GetCustomerIdFromToken())
+            return Forbid();
+
+        var pdfBytes = _pdf.GenerateSaleInvoice(sale);
+        return File(pdfBytes, "application/pdf", $"autopro-invoice-{id}.pdf");
     }
 
     [HttpPost("{id}/send-email")]

@@ -339,4 +339,148 @@ public class ReportPdfService : IReportPdfService
             });
         }).GeneratePdf();
     }
+
+    public byte[] GenerateSaleInvoice(SaleResponse data)
+    {
+        return Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(36);
+                page.DefaultTextStyle(t => t.FontFamily("Arial").FontSize(9));
+
+                page.Header().Column(col =>
+                {
+                    col.Item().Row(row =>
+                    {
+                        row.RelativeItem().Column(inner =>
+                        {
+                            inner.Item().Text("AutoPro Garage")
+                                 .FontSize(20).Bold().FontColor(Color.FromHex(PrimaryHex));
+                            inner.Item().Text("Service Invoice").FontSize(13).SemiBold();
+                        });
+                        row.AutoItem().AlignRight().Column(inner =>
+                        {
+                            inner.Item().Text($"Invoice #{data.Id}")
+                                 .FontSize(16).Bold().FontColor(Color.FromHex(PrimaryHex));
+                            inner.Item().Text($"Date: {data.Date:dd MMM yyyy}")
+                                 .FontSize(9).FontColor(Colors.Grey.Darken1);
+                            inner.Item().PaddingTop(4)
+                                 .Text(data.Status.ToUpper())
+                                 .FontSize(9).Bold()
+                                 .FontColor(data.Status == "Paid" ? Colors.Green.Darken1 : Colors.Orange.Darken1);
+                        });
+                    });
+                    col.Item().PaddingTop(6)
+                       .LineHorizontal(1.5f).LineColor(Color.FromHex(PrimaryHex));
+                    col.Item().Height(10);
+                });
+
+                page.Content().Column(col =>
+                {
+                    // Customer & staff info
+                    col.Item().Row(row =>
+                    {
+                        row.RelativeItem().Column(c =>
+                        {
+                            c.Item().Text("Billed To").FontSize(9).FontColor(Colors.Grey.Medium);
+                            c.Item().Text(data.CustomerName).FontSize(11).Bold();
+                        });
+                        row.RelativeItem().AlignRight().Column(c =>
+                        {
+                            c.Item().Text("Served By").FontSize(9).FontColor(Colors.Grey.Medium);
+                            c.Item().Text(data.StaffName).FontSize(11).Bold();
+                            c.Item().Text($"Payment: {data.PaymentMethod}").FontSize(9).FontColor(Colors.Grey.Darken1);
+                        });
+                    });
+
+                    col.Item().Height(18);
+
+                    // Items table
+                    col.Item().Text("Items").FontSize(11).SemiBold().FontColor(Color.FromHex(PrimaryHex));
+                    col.Item().Height(6);
+
+                    col.Item().Table(table =>
+                    {
+                        table.ColumnsDefinition(cols =>
+                        {
+                            cols.RelativeColumn(4);
+                            cols.RelativeColumn(2);
+                            cols.RelativeColumn(3);
+                            cols.RelativeColumn(3);
+                        });
+
+                        void HeaderCell(string text) =>
+                            table.Cell().Background(Color.FromHex(PrimaryHex))
+                                 .Padding(6).Text(text).FontSize(9).Bold().FontColor(Colors.White);
+
+                        HeaderCell("Description");
+                        HeaderCell("Qty");
+                        HeaderCell("Unit Price (NPR)");
+                        HeaderCell("Total (NPR)");
+
+                        bool alt = false;
+                        foreach (var item in data.Items)
+                        {
+                            var bg = alt ? Colors.Grey.Lighten5 : Colors.White;
+                            alt = !alt;
+                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(6).Text(item.PartName).FontSize(9);
+                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(6).Text(item.Quantity.ToString()).FontSize(9);
+                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(6).Text($"{item.UnitPrice:N0}").FontSize(9).SemiBold();
+                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(6).Text($"{item.LineTotal:N0}").FontSize(9).SemiBold();
+                        }
+                    });
+
+                    col.Item().Height(12);
+
+                    // Totals
+                    col.Item().AlignRight().Table(table =>
+                    {
+                        table.ColumnsDefinition(cols =>
+                        {
+                            cols.RelativeColumn(3);
+                            cols.RelativeColumn(2);
+                        });
+
+                        void TotalRow(string label, string value, bool bold = false, string? color = null)
+                        {
+                            var c = color != null ? Color.FromHex(color) : Colors.Grey.Darken2;
+                            if (bold)
+                            {
+                                table.Cell().PaddingVertical(3).Text(label).FontSize(9).Bold().FontColor(c);
+                                table.Cell().PaddingVertical(3).AlignRight().Text(value).FontSize(9).Bold().FontColor(c);
+                            }
+                            else
+                            {
+                                table.Cell().PaddingVertical(3).Text(label).FontSize(9).FontColor(c);
+                                table.Cell().PaddingVertical(3).AlignRight().Text(value).FontSize(9).FontColor(c);
+                            }
+                        }
+
+                        TotalRow("Subtotal", $"NPR {data.Subtotal:N0}");
+                        if (data.LoyaltyDiscount > 0)
+                            TotalRow("Loyalty Discount", $"-NPR {data.LoyaltyDiscount:N0}", color: "#059669");
+                        TotalRow($"VAT (13%)", $"NPR {data.Tax:N0}");
+                        TotalRow("GRAND TOTAL", $"NPR {data.Total:N0}", bold: true, color: PrimaryHex);
+
+                        if (data.LoyaltyPointsAwarded > 0)
+                            TotalRow($"+{data.LoyaltyPointsAwarded} loyalty points earned", "", color: "#d97706");
+                    });
+                });
+
+                page.Footer().Row(row =>
+                {
+                    row.RelativeItem()
+                       .Text("AutoPro Garage, Kathmandu, Nepal  |  Thank you for your business!")
+                       .FontSize(8).FontColor(Colors.Grey.Medium);
+                    row.AutoItem().Text(x =>
+                    {
+                        x.Span("Page ").FontSize(8).FontColor(Colors.Grey.Medium);
+                        x.CurrentPageNumber().FontSize(8).FontColor(Colors.Grey.Medium);
+                    });
+                });
+            });
+        }).GeneratePdf();
+    }
 }
