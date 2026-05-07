@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingCart, Plus, Send, Check, X, Tag, TrendingUp, Clock, Search, ChevronDown } from 'lucide-react';
-import { getSales, createSale, sendInvoiceEmail } from '../../services/salesService';
+import { ShoppingCart, Plus, Send, Check, X, Tag, TrendingUp, Clock, Search, ChevronDown, FileText } from 'lucide-react';
+import { getSales, createSale, sendInvoiceEmail, downloadSaleInvoicePdf } from '../../services/salesService';
 import { getParts } from '../../services/partsService';
 import { getCustomers } from '../../services/customerService';
 import { PageHeader, StatusBadge, Spinner, Avatar } from '../../components/ui/index';
@@ -18,6 +18,7 @@ export default function StaffSales() {
   const [showEmail, setShowEmail]     = useState(null);
   const [emailSending, setEmailSending] = useState(false);
   const [toast, setToast]             = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   /* Form state */
   const [customerSearch, setCustomerSearch]     = useState('');
@@ -101,6 +102,17 @@ export default function StaffSales() {
     }
   };
 
+  const handleDownloadPdf = async (inv) => {
+    setDownloadingId(inv.id);
+    try {
+      await downloadSaleInvoicePdf(inv.id);
+    } catch {
+      setToast({ type: 'error', msg: 'Failed to download PDF.' });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const handleSendEmail = async (inv) => {
     setEmailSending(true);
     try {
@@ -170,7 +182,7 @@ export default function StaffSales() {
         <div className="overflow-x-auto">
           <table className="w-full data-table">
             <thead>
-              <tr>{['Invoice', 'Customer', 'Date', 'Subtotal', 'Discount', 'VAT', 'Total', 'Status', 'Email'].map(h => <th key={h}>{h}</th>)}</tr>
+              <tr>{['Invoice', 'Customer', 'Date', 'Subtotal', 'Discount', 'VAT', 'Total', 'Status', 'PDF', 'Email'].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {invoices.map(inv => (
@@ -192,6 +204,18 @@ export default function StaffSales() {
                   <td className="text-xs text-muted-foreground">NPR {inv.tax?.toLocaleString() ?? 0}</td>
                   <td className="font-bold text-foreground">NPR {inv.total.toLocaleString()}</td>
                   <td><StatusBadge status={inv.status} /></td>
+                  <td>
+                    <button
+                      onClick={() => handleDownloadPdf(inv)}
+                      disabled={downloadingId === inv.id}
+                      className="flex items-center gap-1 text-violet-600 dark:text-violet-400 text-xs font-bold hover:underline disabled:opacity-40"
+                    >
+                      {downloadingId === inv.id
+                        ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                        : <FileText size={11} />}
+                      PDF
+                    </button>
+                  </td>
                   <td>
                     <button
                       onClick={() => setShowEmail(inv)}
