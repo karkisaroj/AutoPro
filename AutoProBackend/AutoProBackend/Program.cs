@@ -31,6 +31,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IVendorService, VendorService>();
+builder.Services.AddScoped<IPartsService, PartsService>();
+builder.Services.AddScoped<IStaffService, StaffService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+builder.Services.AddScoped<ISalesService, SalesService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddControllers();
 
 // CORS for React frontend
