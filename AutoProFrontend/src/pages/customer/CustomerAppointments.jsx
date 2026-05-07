@@ -1,50 +1,100 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Car, CheckCircle, XCircle, AlertCircle, Plus, X, CalendarCheck } from 'lucide-react';
-import { PageHeader } from '../../components/ui/index';
+import { PageHeader, Spinner } from '../../components/ui/index';
+import { useAuth } from '../../context/AuthContext';
+import { getMyAppointments, createAppointment, cancelAppointment, getAvailableServices } from '../../services/appointmentService';
+import { getCustomerById } from '../../services/customerService';
 
-const INITIAL_APPTS = [
-  { id: 'APT-001', service: 'Oil Change',        date: '2026-04-15', time: '10:00 AM', vehicle: 'Toyota Corolla 2019', status: 'Confirmed', note: '' },
-  { id: 'APT-002', service: 'Tyre Rotation',     date: '2026-04-20', time: '02:00 PM', vehicle: 'Toyota Corolla 2019', status: 'Pending',   note: '' },
-  { id: 'APT-003', service: 'Full Body Service', date: '2026-03-10', time: '09:00 AM', vehicle: 'Toyota Corolla 2019', status: 'Completed', note: 'Serviced by Ramesh' },
-  { id: 'APT-004', service: 'Engine Check',      date: '2026-02-05', time: '11:00 AM', vehicle: 'Toyota Corolla 2019', status: 'Cancelled', note: 'Customer request' },
-];
-
-const SERVICES = ['Oil Change', 'Tyre Rotation', 'Full Body Service', 'Engine Check', 'Brake Inspection', 'Battery Replacement', 'AC Service', 'Wheel Alignment'];
-const TIMES    = ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
+const TIMES = ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
 
 const STATUS_CONFIG = {
-  Confirmed: { icon: CheckCircle,  color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700' },
-  Pending:   { icon: AlertCircle,  color: 'text-amber-600',   bg: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700'   },
-  Completed: { icon: CheckCircle,  color: 'text-blue-600',    bg: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700'    },
-  Cancelled: { icon: XCircle,      color: 'text-red-500',     bg: 'bg-red-100 dark:bg-red-900/30 text-red-700'       },
+  Confirmed: { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700' },
+  Pending:   { icon: AlertCircle, color: 'text-amber-600',   bg: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700'   },
+  Completed: { icon: CheckCircle, color: 'text-blue-600',    bg: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700'    },
+  Cancelled: { icon: XCircle,     color: 'text-red-500',     bg: 'bg-red-100 dark:bg-red-900/30 text-red-700'       },
 };
 
+const EMPTY_FORM = { service: '', date: '', time: TIMES[0], vehicleId: '', note: '' };
+
 export default function CustomerAppointments() {
-  const [appts, setAppts]         = useState(INITIAL_APPTS);
+  const { user } = useAuth();
+  const [appts,     setAppts]     = useState([]);
+  const [loading,   setLoading]   = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm]           = useState({ service: SERVICES[0], date: '', time: TIMES[0], note: '' });
+  const [services,  setServices]  = useState([]);
+  const [vehicles,  setVehicles]  = useState([]);
+  const [form,      setForm]      = useState(EMPTY_FORM);
+  const [saving,    setSaving]    = useState(false);
+  const [error,     setError]     = useState(null);
+
+  useEffect(() => {
+    if (!user?.profileId) { setLoading(false); return; }
+    Promise.all([
+      getMyAppointments(),
+      getAvailableServices(),
+      getCustomerById(user.profileId),
+    ]).then(([apptList, svcList, customer]) => {
+      setAppts(apptList);
+      setServices(svcList);
+      setVehicles(customer.vehicles || []);
+      setForm(f => ({
+        ...f,
+        service:   svcList[0] || '',
+        vehicleId: customer.vehicles?.[0]?.id?.toString() || '',
+      }));
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [user]);
 
   const upcoming = appts.filter(a => ['Confirmed', 'Pending'].includes(a.status));
   const past     = appts.filter(a => ['Completed', 'Cancelled'].includes(a.status));
 
-  const book = () => {
+  const openModal = () => { setError(null); setShowModal(true); };
+
+  const book = async () => {
     if (!form.date) return;
-    setAppts(prev => [{
-      id: `APT-${String(prev.length + 1).padStart(3, '0')}`,
-      service: form.service, date: form.date, time: form.time,
-      vehicle: 'Toyota Corolla 2019', status: 'Pending', note: form.note,
-    }, ...prev]);
-    setShowModal(false);
-    setForm({ service: SERVICES[0], date: '', time: TIMES[0], note: '' });
+    setSaving(true);
+    setError(null);
+    try {
+      const created = await createAppointment({
+        customerId: user.profileId,
+        vehicleId:  form.vehicleId ? Number(form.vehicleId) : null,
+        service:    form.service,
+        date:       form.date,
+        time:       form.time,
+        notes:      form.note,
+      });
+      setAppts(prev => [created, ...prev]);
+      setShowModal(false);
+      setForm(f => ({ ...f, date: '', note: '' }));
+    } catch (err) {
+      setError(err?.message || 'Failed to book appointment. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const cancel = (id) => setAppts(prev => prev.map(a => a.id === id ? { ...a, status: 'Cancelled' } : a));
+  const cancel = async (id) => {
+    try {
+      await cancelAppointment(id);
+      setAppts(prev => prev.map(a => a.id === id ? { ...a, status: 'Cancelled' } : a));
+    } catch {
+      // silently ignore
+    }
+  };
+
+  if (loading) return (
+    <div className="space-y-6">
+      <PageHeader eyebrow="Customer" title="My Appointments" subtitle="Book and manage your vehicle service appointments." />
+      <Spinner />
+    </div>
+  );
 
   return (
     <div className="space-y-6 page-enter">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <PageHeader eyebrow="Customer" title="My Appointments" subtitle="Book and manage your vehicle service appointments." />
-        <button onClick={() => setShowModal(true)} className="btn-primary" style={{ background: 'linear-gradient(135deg, #10b981, #0d9488)' }}>
+        <button onClick={openModal} className="btn-primary" style={{ background: 'linear-gradient(135deg, #10b981, #0d9488)' }}>
           <Plus size={16} /> Book Appointment
         </button>
       </div>
@@ -61,7 +111,7 @@ export default function CustomerAppointments() {
         ) : (
           <div className="space-y-3">
             {upcoming.map(a => {
-              const s = STATUS_CONFIG[a.status];
+              const s = STATUS_CONFIG[a.status] || STATUS_CONFIG.Pending;
               const Icon = s.icon;
               return (
                 <div key={a.id} className="dash-card p-5">
@@ -79,14 +129,15 @@ export default function CustomerAppointments() {
                       <div className="flex gap-4 mt-1.5 flex-wrap text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Calendar size={10} /> {a.date}</span>
                         <span className="flex items-center gap-1"><Clock size={10} /> {a.time}</span>
-                        <span className="flex items-center gap-1"><Car size={10} /> {a.vehicle}</span>
+                        {a.vehicle && <span className="flex items-center gap-1"><Car size={10} /> {a.vehicle}</span>}
+                        {a.mechanic && <span>Mechanic: {a.mechanic}</span>}
                       </div>
-                      {a.note && <p className="text-xs text-muted-foreground italic mt-1.5">Note: {a.note}</p>}
+                      {a.notes && <p className="text-xs text-muted-foreground italic mt-1.5">Note: {a.notes}</p>}
                     </div>
                     {a.status === 'Pending' && (
                       <button
                         onClick={() => cancel(a.id)}
-                        className="text-xs font-bold text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-lg px-2 py-1 transition-colors"
+                        className="text-xs font-bold text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-lg px-2 py-1 transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -103,8 +154,10 @@ export default function CustomerAppointments() {
       <div>
         <h2 className="section-label mb-3">Past Appointments</h2>
         <div className="dash-card divide-y divide-border">
-          {past.map(a => {
-            const s = STATUS_CONFIG[a.status];
+          {past.length === 0 ? (
+            <p className="text-center text-muted-foreground text-sm py-8">No past appointments</p>
+          ) : past.map(a => {
+            const s = STATUS_CONFIG[a.status] || STATUS_CONFIG.Cancelled;
             const Icon = s.icon;
             return (
               <div key={a.id} className="flex items-center gap-4 px-5 py-4 hover:bg-card-hover transition-colors">
@@ -126,15 +179,30 @@ export default function CustomerAppointments() {
           <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md">
             <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
               <h2 className="text-lg font-display font-black text-foreground">Book Appointment</h2>
-              <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
+              <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground cursor-pointer"><X size={18} /></button>
             </div>
             <div className="p-6 space-y-4">
+              {error && (
+                <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-2">
+                  {error}
+                </div>
+              )}
               <div>
                 <label className="form-label">Service Type</label>
                 <select value={form.service} onChange={e => setForm(p => ({ ...p, service: e.target.value }))} className="form-select">
-                  {SERVICES.map(s => <option key={s}>{s}</option>)}
+                  {services.map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
+              {vehicles.length > 0 && (
+                <div>
+                  <label className="form-label">Vehicle</label>
+                  <select value={form.vehicleId} onChange={e => setForm(p => ({ ...p, vehicleId: e.target.value }))} className="form-select">
+                    {vehicles.map(v => (
+                      <option key={v.id} value={v.id}>{v.vehicleType} — {v.plateNo}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="form-label">Preferred Date</label>
                 <input type="date" value={form.date}
@@ -158,8 +226,9 @@ export default function CustomerAppointments() {
               </div>
               <div className="flex gap-3 pt-1">
                 <button onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
-                <button onClick={book} disabled={!form.date} className="btn-primary flex-1 disabled:opacity-50"
+                <button onClick={book} disabled={!form.date || saving} className="btn-primary flex-1 justify-center disabled:opacity-50 cursor-pointer"
                   style={{ background: 'linear-gradient(135deg, #10b981, #0d9488)' }}>
+                  {saving && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                   Confirm Booking
                 </button>
               </div>

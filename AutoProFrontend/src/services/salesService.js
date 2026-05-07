@@ -1,4 +1,4 @@
-import { apiFetch } from './api';
+import { apiFetch, BASE_URL } from './api';
 
 const adaptItem = (i) => ({
   description: i.partName,
@@ -48,6 +48,21 @@ export const createSale = (data) =>
 
 export const sendInvoiceEmail = (saleId) =>
   apiFetch(`/api/sales/${saleId}/send-email`, { method: 'POST' });
+
+export const downloadSaleInvoicePdf = async (saleId) => {
+  const token = localStorage.getItem('authToken');
+  const res = await fetch(`${BASE_URL}/api/sales/${saleId}/pdf`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('Failed to generate invoice PDF');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `autopro-invoice-${saleId}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 
 export const getRevenueByDay = () =>
   apiFetch('/api/reports/financial?period=monthly').then(report => {
