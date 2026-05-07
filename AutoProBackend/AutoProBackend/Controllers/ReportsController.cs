@@ -1,3 +1,4 @@
+using AutoProBackend.DTOs;
 using AutoProBackend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +11,13 @@ namespace AutoProBackend.Controllers;
 public class ReportsController : ControllerBase
 {
     private readonly IReportService _reports;
-    public ReportsController(IReportService reports) => _reports = reports;
+    private readonly IReportPdfService _pdf;
+
+    public ReportsController(IReportService reports, IReportPdfService pdf)
+    {
+        _reports = reports;
+        _pdf = pdf;
+    }
 
     [HttpGet("financial")]
     [Authorize(Roles = "Admin")]
@@ -22,6 +29,29 @@ public class ReportsController : ControllerBase
         var y = year ?? DateTime.UtcNow.Year;
         var m = month ?? DateTime.UtcNow.Month;
         return Ok(await _reports.GetFinancialReportAsync(period, y, m));
+    }
+
+    [HttpGet("financial/pdf")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetFinancialReportPdf(
+        [FromQuery] string period = "monthly",
+        [FromQuery] int? year = null,
+        [FromQuery] int? month = null)
+    {
+        var y = year ?? DateTime.UtcNow.Year;
+        var m = month ?? DateTime.UtcNow.Month;
+
+        var data = await _reports.GetFinancialReportAsync(period, y, m);
+        var pdfBytes = _pdf.GenerateFinancialReport(data, period, y, month);
+
+        var tag = period.ToLower() switch
+        {
+            "daily"   => $"daily-{y}-{m:D2}-{DateTime.UtcNow.Day:D2}",
+            "monthly" => $"monthly-{y}-{m:D2}",
+            _         => $"yearly-{y}"
+        };
+
+        return File(pdfBytes, "application/pdf", $"autopro-financial-report-{tag}.pdf");
     }
 
     [HttpGet("customers")]

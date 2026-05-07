@@ -1,4 +1,4 @@
-import { apiFetch } from './api';
+import { apiFetch, BASE_URL } from './api';
 
 // Backend field adapter → AdminParts.jsx expects: name, sku, category, supplier, price, quantity, minStock, unit
 const adaptPart = (p) => ({
@@ -95,3 +95,26 @@ export const createPurchaseOrder = (data) =>
     method: 'POST',
     body: JSON.stringify(data),
   }).then(adaptPO);
+
+export const updatePurchaseOrderStatus = (id, status) =>
+  apiFetch(`/api/purchase-orders/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+
+export async function downloadPurchaseOrderPdf(id) {
+  const token = localStorage.getItem('authToken');
+  const res = await fetch(`${BASE_URL}/api/purchase-orders/${id}/pdf`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error((await res.text()) || 'PDF generation failed');
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `autopro-po-${id}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

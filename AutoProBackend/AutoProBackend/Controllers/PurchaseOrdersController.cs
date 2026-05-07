@@ -11,7 +11,13 @@ namespace AutoProBackend.Controllers;
 public class PurchaseOrdersController : ControllerBase
 {
     private readonly IPurchaseOrderService _purchaseOrders;
-    public PurchaseOrdersController(IPurchaseOrderService purchaseOrders) => _purchaseOrders = purchaseOrders;
+    private readonly IReportPdfService _pdf;
+
+    public PurchaseOrdersController(IPurchaseOrderService purchaseOrders, IReportPdfService pdf)
+    {
+        _purchaseOrders = purchaseOrders;
+        _pdf = pdf;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] string? status) =>
@@ -36,4 +42,13 @@ public class PurchaseOrdersController : ControllerBase
     [HttpPatch("{id}/status")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdatePurchaseOrderStatusRequest req) =>
         await _purchaseOrders.UpdateStatusAsync(id, req) ? NoContent() : NotFound();
+
+    [HttpGet("{id}/pdf")]
+    public async Task<IActionResult> GetPdf(int id)
+    {
+        var order = await _purchaseOrders.GetByIdAsync(id);
+        if (order == null) return NotFound();
+        var pdfBytes = _pdf.GeneratePurchaseOrderInvoice(order);
+        return File(pdfBytes, "application/pdf", $"autopro-po-{id}.pdf");
+    }
 }

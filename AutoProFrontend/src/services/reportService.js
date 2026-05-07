@@ -1,10 +1,10 @@
-import { apiFetch } from './api';
+import { apiFetch, BASE_URL } from './api';
 
-export const getFinancialReport = (period = 'monthly', year, month) => {
+export const getFinancialReport = (period = 'monthly', year = null, month = null) => {
   const params = new URLSearchParams({ period });
-  if (year) params.set('year', year);
-  if (month) params.set('month', month);
-  return apiFetch(`/api/reports/financial?${params}`).then(data => ({
+  if (year  != null) params.append('year',  year);
+  if (month != null) params.append('month', month);
+  return apiFetch(`/api/reports/financial?${params.toString()}`).then(data => ({
     summary: {
       totalRevenue: data.totalRevenue,
       totalExpenses: data.totalExpenses,
@@ -13,14 +13,22 @@ export const getFinancialReport = (period = 'monthly', year, month) => {
       invoicesIssued: data.invoicesIssued,
       avgInvoiceValue: data.averageInvoiceValue,
     },
-    monthly: (data.dailyBreakdown || []).slice(-6).map((entry) => ({
-      month: new Date(entry.date).toLocaleString('default', { month: 'short' }),
-      revenue: entry.revenue,
-      expenses: 0,
+    monthly: (data.monthlyTrend || []).map(entry => ({
+      month:    entry.month,
+      revenue:  entry.revenue,
+      expenses: entry.expenses,
     })),
-    breakdown: data.dailyBreakdown || [],
-    serviceBreakdown: [],
-    topStaff: [],
+    breakdown: (data.dailyBreakdown || []).map(entry => ({
+      date:     new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      revenue:  entry.revenue,
+      invoices: entry.invoices,
+    })),
+    serviceBreakdown: (data.serviceBreakdown || []).map(s => ({
+      service: s.service,
+      count:   s.count,
+      revenue: s.revenue,
+      pct:     s.pct,
+    })),
   }));
 };
 
@@ -49,3 +57,30 @@ export const getCustomerReport = () =>
     newCustomersThisMonth: 0,
     repeatCustomers: 0,
   }));
+
+export async function downloadFinancialReportPdf(period = 'monthly', year = null, month = null) {
+  const token = localStorage.getItem('authToken');
+  const params = new URLSearchParams({ period });
+  if (year  != null) params.append('year',  year);
+  if (month != null) params.append('month', month);
+
+  const res = await fetch(`${BASE_URL}/api/reports/financial/pdf?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) throw new Error((await res.text()) || 'PDF generation failed');
+
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="?([^";\n]+)"?/);
+  const filename = match ? match[1] : 'autopro-financial-report.pdf';
+
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

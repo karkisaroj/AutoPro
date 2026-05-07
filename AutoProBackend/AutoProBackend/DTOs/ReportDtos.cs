@@ -9,6 +9,8 @@ public class FinancialReportResponse
     public decimal AverageInvoiceValue { get; set; }
     public decimal MonthOverMonthChange { get; set; }
     public List<DailyRevenueEntry> DailyBreakdown { get; set; } = new();
+    public List<MonthlyTrendEntry> MonthlyTrend { get; set; } = new();
+    public List<ServiceBreakdownEntry> ServiceBreakdown { get; set; } = new();
 }
 
 public class DailyRevenueEntry
@@ -16,6 +18,21 @@ public class DailyRevenueEntry
     public DateTime Date { get; set; }
     public decimal Revenue { get; set; }
     public int Invoices { get; set; }
+}
+
+public class MonthlyTrendEntry
+{
+    public string Month { get; set; } = string.Empty;
+    public decimal Revenue { get; set; }
+    public decimal Expenses { get; set; }
+}
+
+public class ServiceBreakdownEntry
+{
+    public string Service { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public decimal Revenue { get; set; }
+    public decimal Pct { get; set; }
 }
 
 public class CustomerReportResponse
