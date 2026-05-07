@@ -17,6 +17,7 @@ export default function StaffSales() {
   const [showNew, setShowNew]         = useState(false);
   const [showEmail, setShowEmail]     = useState(null);
   const [emailSending, setEmailSending] = useState(false);
+  const [toast, setToast]             = useState(null);
 
   /* Form state */
   const [customerSearch, setCustomerSearch]     = useState('');
@@ -35,6 +36,12 @@ export default function StaffSales() {
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   /* Close customer dropdown on outside click */
   useEffect(() => {
@@ -88,6 +95,7 @@ export default function StaffSales() {
       setInvoices(prev => [created, ...prev]);
       setShowNew(false);
       resetForm();
+      setToast({ type: 'success', msg: `Invoice created for ${selectedCustomer.name}!` });
     } finally {
       setSaving(false);
     }
@@ -97,9 +105,9 @@ export default function StaffSales() {
     setEmailSending(true);
     try {
       await sendInvoiceEmail(inv.id);
-      alert('Invoice email sent successfully!');
+      setToast({ type: 'success', msg: 'Invoice email sent successfully!' });
     } catch {
-      alert('Failed to send email. Check SMTP configuration.');
+      setToast({ type: 'error', msg: 'Failed to send email. Check SMTP configuration.' });
     } finally {
       setEmailSending(false);
       setShowEmail(null);
@@ -127,6 +135,16 @@ export default function StaffSales() {
 
   return (
     <div className="space-y-6 page-enter">
+      {toast && (
+        <div className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold border ${
+          toast.type === 'success'
+            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300'
+            : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300'
+        }`}>
+          {toast.type === 'success' ? <Check size={15} /> : <X size={15} />}
+          {toast.msg}
+        </div>
+      )}
       <PageHeader
         eyebrow="Staff"
         title="Sales & Invoices"
