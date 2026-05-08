@@ -1,5 +1,6 @@
-using System.Net;
-using System.Net.Mail;
+using MailKit.Net.Smtp;
+using MailKit.Security;
+using MimeKit;
 
 namespace AutoProBackend.Services;
 
@@ -17,29 +18,43 @@ public class EmailService : IEmailService
     public async Task SendAsync(string to, string subject, string body)
     {
         var host = _config["Email:SmtpHost"];
-        if (string.IsNullOrWhiteSpace(host))
+        if (string.IsNullOrWhiteSpace(host) || host == "smtp.gmail.com" && string.IsNullOrWhiteSpace(_config["Email:Password"]))
         {
             _logger.LogWarning("Email not sent to {To}: SMTP not configured.", to);
             return;
         }
 
-        var port = int.Parse(_config["Email:SmtpPort"] ?? "587");
+        var port     = int.Parse(_config["Email:SmtpPort"] ?? "587");
         var username = _config["Email:Username"] ?? string.Empty;
         var password = _config["Email:Password"] ?? string.Empty;
-        var from = _config["Email:From"] ?? "noreply@autopro.com";
+        var from     = _config["Email:From"]     ?? username;
 
-        using var client = new SmtpClient(host, port)
+        if (password == "YOUR_GMAIL_APP_PASSWORD_HERE")
         {
-            EnableSsl = true,
-            Credentials = new NetworkCredential(username, password)
-        };
+            _logger.LogWarning("Email not sent to {To}: Gmail App Password not configured in appsettings.json.", to);
+            throw new InvalidOperationException(
+                "Gmail App Password is not set. Go to myaccount.google.com → Security → App Passwords and generate a 16-character password, then add it to appsettings.json Email:Password.");
+        }
 
-        var message = new MailMessage(from, to, subject, body)
+        var message = new MimeMessage();
+        message.From.Add(MailboxAddress.Parse(from));
+        message.To.Add(MailboxAddress.Parse(to));
+        message.Subject = subject;
+        message.Body = new TextPart("html") { Text = body };
+
+        try
         {
-            IsBodyHtml = true
-        };
-
-        await client.SendMailAsync(message);
-        _logger.LogInformation("Email sent to {To}: {Subject}", to, subject);
+            using var client = new SmtpClient();
+            await client.ConnectAsync(host, port, SecureSocketOptions.StartTls);
+            await client.AuthenticateAsync(username, password);
+            await client.SendAsync(message);
+            await client.DisconnectAsync(true);
+            _logger.LogInformation("Email sent to {To}: {Subject}", to, subject);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SMTP error sending to {To}: {Error}", to, ex.Message);
+            throw new InvalidOperationException($"Email delivery failed: {ex.Message}", ex);
+        }
     }
 }

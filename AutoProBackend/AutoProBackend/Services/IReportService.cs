@@ -8,4 +8,5 @@ public interface IReportService
     Task<CustomerReportResponse> GetCustomerReportAsync();
     Task<int> SendOverdueRemindersAsync();
     Task<List<LowStockPartResponse>> GetLowStockAlertAsync();
+    Task<int> SendLowStockAlertAsync();
 }

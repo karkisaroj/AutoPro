@@ -8,11 +8,13 @@ public class ReportService : IReportService
 {
     private readonly AppDbContext _db;
     private readonly IEmailService _email;
+    private readonly IConfiguration _config;
 
-    public ReportService(AppDbContext db, IEmailService email)
+    public ReportService(AppDbContext db, IEmailService email, IConfiguration config)
     {
         _db = db;
         _email = email;
+        _config = config;
     }
 
     public async Task<FinancialReportResponse> GetFinancialReportAsync(string period, int year, int month)
@@ -157,4 +159,35 @@ is overdue by <strong>{daysOverdue} days</strong>.</p>
                 VendorName = p.Vendor.Name
             })
             .ToListAsync();
+
+    public async Task<int> SendLowStockAlertAsync()
+    {
+        var lowStock = await _db.Parts
+            .Include(p => p.Vendor)
+            .Where(p => p.Quantity < 10)
+            .ToListAsync();
+
+        if (lowStock.Count == 0) return 0;
+
+        var adminEmail = _config["Email:AdminEmail"];
+        if (string.IsNullOrWhiteSpace(adminEmail)) return 0;
+
+        var rows = string.Join("", lowStock.Select(p =>
+            $"<tr><td>{p.Name}</td><td>{p.Category}</td><td style='color:red;font-weight:bold'>{p.Quantity}</td><td>{p.MinQuantity}</td><td>{p.Vendor?.Name}</td></tr>"));
+
+        var body = $@"
+<html><body style='font-family:Arial,sans-serif;color:#333'>
+<h2 style='color:#dc2626'>AutoPro Garage &mdash; Low Stock Alert</h2>
+<p>The following {lowStock.Count} part(s) are below the minimum threshold (10 units) and require restocking:</p>
+<table border='1' cellpadding='8' cellspacing='0' style='border-collapse:collapse;width:100%'>
+  <thead style='background:#fee2e2'><tr><th>Part Name</th><th>Category</th><th>Current Qty</th><th>Min Qty</th><th>Vendor</th></tr></thead>
+  <tbody>{rows}</tbody>
+</table>
+<br/><p>Please raise a purchase order at your earliest convenience.</p>
+<p>&mdash; AutoPro Garage System</p>
+</body></html>";
+
+        await _email.SendAsync(adminEmail, "AutoPro Garage — Low Stock Alert", body);
+        return lowStock.Count;
+    }
 }

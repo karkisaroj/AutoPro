@@ -77,9 +77,16 @@ public class SalesController : ControllerBase
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> SendInvoiceEmail(int id)
     {
-        var sent = await _sales.SendInvoiceEmailAsync(id);
-        if (!sent) return NotFound();
-        return Ok(new { message = "Invoice email sent" });
+        try
+        {
+            var sent = await _sales.SendInvoiceEmailAsync(id);
+            if (!sent) return NotFound();
+            return Ok(new { message = "Invoice email sent" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
     }
 
     private async Task<int?> GetCustomerIdFromToken()
