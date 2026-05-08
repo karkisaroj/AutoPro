@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, Download, FileText } from 'lucide-react';
-import { getFinancialReport, getCustomerReport, downloadFinancialReportPdf } from '../../services/reportService';
+import { BarChart3, TrendingUp, Download, FileText, AlertTriangle, Bell } from 'lucide-react';
+import { getFinancialReport, getCustomerReport, downloadFinancialReportPdf, sendLowStockAlert, getLowStockAlerts } from '../../services/reportService';
 import { PageHeader, Spinner, Avatar } from '../../components/ui/index';
 import StatCard from '../../components/ui/StatCard';
 
@@ -11,8 +11,11 @@ export default function AdminReports() {
   const [customers,  setCustomers]  = useState(null);
   const [loading,    setLoading]    = useState(true);
   const [view,       setView]       = useState(1); // Monthly default
-  const [pdfLoading, setPdfLoading] = useState(false);
-  const [pdfError,   setPdfError]   = useState(null);
+  const [pdfLoading,    setPdfLoading]    = useState(false);
+  const [pdfError,      setPdfError]      = useState(null);
+  const [lowStock,      setLowStock]      = useState([]);
+  const [alertSending,  setAlertSending]  = useState(false);
+  const [alertResult,   setAlertResult]   = useState(null);
 
   const now = new Date();
   const [year,  setYear]  = useState(now.getFullYear());
@@ -25,12 +28,27 @@ export default function AdminReports() {
     Promise.all([
       getFinancialReport(period, year, view === 2 ? null : month),
       getCustomerReport(),
-    ]).then(([f, c]) => {
+      getLowStockAlerts(),
+    ]).then(([f, c, ls]) => {
       setFinancial(f);
       setCustomers(c);
+      setLowStock(ls || []);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [view, year, month]);
+
+  const handleSendLowStockAlert = async () => {
+    setAlertSending(true);
+    try {
+      const result = await sendLowStockAlert();
+      setAlertResult(result.message);
+      setTimeout(() => setAlertResult(null), 5000);
+    } catch (err) {
+      setAlertResult(err?.message || 'Failed to send alert. Check SMTP configuration.');
+    } finally {
+      setAlertSending(false);
+    }
+  };
 
   const handleExportPdf = async () => {
     setPdfLoading(true);
@@ -137,6 +155,37 @@ export default function AdminReports() {
           icon={BarChart3}
         />
       </div>
+
+      {/* Low Stock Alert Banner */}
+      {lowStock.length > 0 && (
+        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4 dark:bg-red-950/30 dark:border-red-800/50">
+          <AlertTriangle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-bold text-red-700 dark:text-red-400">
+              {lowStock.length} part{lowStock.length !== 1 ? 's' : ''} below minimum stock (threshold: 10 units)
+            </p>
+            <p className="text-xs text-red-600 dark:text-red-500 mt-0.5">
+              {lowStock.map(p => `${p.name} (${p.quantity} left)`).join(' · ')}
+            </p>
+          </div>
+          <button
+            onClick={handleSendLowStockAlert}
+            disabled={alertSending}
+            className="btn-primary text-xs px-3 py-1 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+            style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)' }}
+          >
+            {alertSending
+              ? <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+              : <Bell size={12} />}
+            {alertSending ? 'Sending…' : 'Email Admin'}
+          </button>
+        </div>
+      )}
+      {alertResult && (
+        <div className="text-sm text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-4 py-2">
+          {alertResult}
+        </div>
+      )}
 
       {/* Bar chart + Service breakdown */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">

@@ -58,6 +58,12 @@ export const getCustomerReport = () =>
     repeatCustomers: 0,
   }));
 
+export const sendLowStockAlert = () =>
+  apiFetch('/api/reports/send-low-stock-alert', { method: 'POST' });
+
+export const getLowStockAlerts = () =>
+  apiFetch('/api/reports/low-stock');
+
 export async function downloadFinancialReportPdf(period = 'monthly', year = null, month = null) {
   const token = localStorage.getItem('authToken');
   const params = new URLSearchParams({ period });
