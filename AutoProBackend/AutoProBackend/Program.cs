@@ -45,6 +45,7 @@ builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
 builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddHostedService<LowStockBackgroundService>();
 builder.Services.AddControllers();
 
 // CORS for React frontend

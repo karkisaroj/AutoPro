@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from './ThemeProvider';
 import { useAuth } from '../context/AuthContext';
@@ -6,13 +6,48 @@ import {
   Menu, X, Sun, Moon, Bell, ChevronRight,
   LogOut, Settings, User, Zap
 } from 'lucide-react';
+import { getLowStockParts } from '../services/partsService';
+import { apiFetch } from '../services/api';
 
 export default function DashboardLayout({ navItems = [], role = 'User', children }) {
   const { isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const userName = user?.name ?? role;
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [notifOpen,   setNotifOpen]   = useState(false);
+  const [sidebarOpen,    setSidebarOpen]    = useState(true);
+  const [notifOpen,      setNotifOpen]      = useState(false);
+  const [notifications,  setNotifications]  = useState([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+
+    if (role === 'Admin' || role === 'Staff') {
+      getLowStockParts()
+        .then(parts => {
+          setNotifications(parts.slice(0, 6).map(p => ({
+            id: `ls-${p.id}`,
+            title: 'Low stock alert',
+            desc: `${p.name} — ${p.quantity} unit${p.quantity !== 1 ? 's' : ''} remaining`,
+            time: 'Inventory',
+            dot: 'bg-red-500',
+          })));
+        })
+        .catch(() => setNotifications([]));
+    } else if (role === 'Customer') {
+      apiFetch('/api/appointments/my')
+        .then(appts => {
+          const upcoming = (appts || []).filter(a => ['Confirmed', 'Pending'].includes(a.status));
+          setNotifications(upcoming.slice(0, 4).map(a => ({
+            id: `appt-${a.id}`,
+            title: a.status === 'Confirmed' ? 'Appointment confirmed' : 'Appointment pending',
+            desc: `${a.service} on ${a.date}`,
+            time: a.time,
+            dot: a.status === 'Confirmed' ? 'bg-emerald-500' : 'bg-blue-500',
+          })));
+        })
+        .catch(() => setNotifications([]));
+    }
+  }, [role]);
   const location = useLocation();
   useNavigate();
 
@@ -31,11 +66,6 @@ export default function DashboardLayout({ navItems = [], role = 'User', children
   };
   const rc = roleColors[role] || roleColors.Admin;
 
-  const notifications = [
-    { id: 1, title: 'Low stock alert',    desc: 'Brake Pad Set below 10 units',    time: '2m ago',    dot: 'bg-red-500'    },
-    { id: 2, title: 'New appointment',    desc: 'Ram Bahadur – Oil Change 2:00PM', time: '14m ago',   dot: 'bg-blue-500'   },
-    { id: 3, title: 'Invoice paid',       desc: 'INV-1042 confirmed – NPR 8,200',  time: '1hr ago',   dot: 'bg-emerald-500'},
-  ];
 
   return (
     <div className="dashboard-root">
@@ -129,16 +159,22 @@ export default function DashboardLayout({ navItems = [], role = 'User', children
                 className="relative p-2.5 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-card-hover transition-all cursor-pointer"
               >
                 <Bell size={16} />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-card" />
+                {notifications.length > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-card" />
+                )}
               </button>
 
               {notifOpen && (
                 <div className="absolute right-0 top-full mt-2 w-72 dash-card overflow-hidden z-50 shadow-xl shadow-black/10 animate-[fadeScale_0.15s_ease-out]">
                   <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                     <p className="text-xs font-black text-foreground uppercase tracking-wide">Notifications</p>
-                    <span className="badge bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">{notifications.length}</span>
+                    {notifications.length > 0 && (
+                      <span className="badge bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">{notifications.length}</span>
+                    )}
                   </div>
-                  {notifications.map(n => (
+                  {notifications.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-6">All clear — no alerts</p>
+                  ) : notifications.map(n => (
                     <div key={n.id} className="flex items-start gap-3 px-4 py-3 hover:bg-card-hover transition-colors cursor-pointer border-b border-border last:border-0">
                       <span className={`w-2 h-2 rounded-full ${n.dot} mt-1.5 flex-shrink-0`} />
                       <div>

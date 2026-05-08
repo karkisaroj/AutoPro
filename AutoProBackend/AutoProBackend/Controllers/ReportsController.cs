@@ -61,8 +61,30 @@ public class ReportsController : ControllerBase
     [HttpPost("send-overdue-reminders")]
     public async Task<IActionResult> SendOverdueReminders()
     {
-        var sent = await _reports.SendOverdueRemindersAsync();
-        return Ok(new { sent, message = $"{sent} reminder email(s) sent" });
+        try
+        {
+            var sent = await _reports.SendOverdueRemindersAsync();
+            return Ok(new { sent, message = $"{sent} reminder email(s) sent" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("send-low-stock-alert")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> SendLowStockAlert()
+    {
+        try
+        {
+            var count = await _reports.SendLowStockAlertAsync();
+            return Ok(new { count, message = count > 0 ? $"Low stock alert sent for {count} part(s)" : "No low-stock parts found" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
     }
 
     [HttpGet("low-stock")]

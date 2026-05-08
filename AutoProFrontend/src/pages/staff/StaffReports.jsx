@@ -35,8 +35,8 @@ export default function StaffReports() {
     try {
       const result = await apiFetch('/api/reports/send-overdue-reminders', { method: 'POST' });
       alert(`${result.sent} reminder email(s) sent successfully.`);
-    } catch {
-      alert('Failed to send reminders. Check email configuration.');
+    } catch (err) {
+      alert(err?.message || 'Failed to send reminders. Check email configuration.');
     } finally {
       setSending(false);
     }
