@@ -3,7 +3,7 @@ import {
   UserPlus, Car, ChevronDown, ChevronUp,
   Search, Users, Star, Calendar, Truck, Check, X,
 } from 'lucide-react';
-import { getCustomers, createCustomer, addVehicle } from '../../services/customerService';
+import { getCustomers, createCustomer, addVehicle, getCustomerHistory } from '../../services/customerService';
 import { PageHeader, Avatar, Spinner, EmptyState } from '../../components/ui/index';
 import StatCard from '../../components/ui/StatCard';
 import Modal from '../../components/ui/Modal';
@@ -32,10 +32,11 @@ function SectionDivider({ label }) {
 }
 
 export default function StaffCustomers() {
-  const [customers, setCustomers] = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [expanded,  setExpanded]  = useState(null);
-  const [showModal, setShowModal] = useState(false);
+  const [customers,   setCustomers]   = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [expanded,    setExpanded]    = useState(null);
+  const [historyMap,  setHistoryMap]  = useState({});
+  const [showModal,   setShowModal]   = useState(false);
   const [form,      setForm]      = useState(EMPTY_FORM);
   const [query,     setQuery]     = useState('');
   const [saving,    setSaving]    = useState(false);
@@ -246,6 +247,14 @@ export default function StaffCustomers() {
                 </button>
 
                 {/* Expanded detail panel */}
+                {expanded === c.id && (() => {
+                  if (!historyMap[c.id]) {
+                    getCustomerHistory(c.id)
+                      .then(h => setHistoryMap(m => ({ ...m, [c.id]: h })))
+                      .catch(() => setHistoryMap(m => ({ ...m, [c.id]: [] })));
+                  }
+                  return null;
+                })()}
                 {expanded === c.id && (
                   <div className="border-t border-border bg-muted/10 px-5 py-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -298,6 +307,45 @@ export default function StaffCustomers() {
                           </div>
                         )}
                       </div>
+
+                    </div>
+
+                    {/* Purchase History */}
+                    <div className="md:col-span-2 mt-2">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3">
+                        Purchase History
+                      </p>
+                      {!historyMap[c.id] ? (
+                        <p className="text-xs text-muted-foreground">Loading…</p>
+                      ) : historyMap[c.id].length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No purchases yet.</p>
+                      ) : (
+                        <div className="overflow-x-auto rounded-xl border border-border">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="bg-muted/50 text-left">
+                                <th className="px-3 py-2 font-bold text-muted-foreground">Date</th>
+                                <th className="px-3 py-2 font-bold text-muted-foreground">Items</th>
+                                <th className="px-3 py-2 font-bold text-muted-foreground text-right">Total</th>
+                                <th className="px-3 py-2 font-bold text-muted-foreground">Payment</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                              {historyMap[c.id].slice(0, 8).map(s => (
+                                <tr key={s.id} className="hover:bg-muted/20 transition-colors">
+                                  <td className="px-3 py-2 text-muted-foreground">{s.date}</td>
+                                  <td className="px-3 py-2 text-foreground max-w-[200px] truncate">
+                                    {s.items.map(i => i.partName).join(', ') || '—'}
+                                  </td>
+                                  <td className="px-3 py-2 font-bold text-primary text-right">NPR {Number(s.total).toLocaleString()}</td>
+                                  <td className="px-3 py-2 text-muted-foreground">{s.paymentMethod}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
 
                     </div>
                   </div>
