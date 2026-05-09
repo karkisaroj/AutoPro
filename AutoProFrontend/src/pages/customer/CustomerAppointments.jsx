@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Car, CheckCircle, XCircle, AlertCircle, Plus, X, CalendarCheck } from 'lucide-react';
+import { Calendar, Clock, Car, CheckCircle, XCircle, AlertCircle, Plus, X, CalendarCheck, Star } from 'lucide-react';
 import { PageHeader, Spinner } from '../../components/ui/index';
 import { useAuth } from '../../context/AuthContext';
 import { getMyAppointments, createAppointment, cancelAppointment, getAvailableServices } from '../../services/appointmentService';
 import { getCustomerById } from '../../services/customerService';
+import { submitReview } from '../../services/reviewService';
 
 const TIMES = ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
 
@@ -18,14 +19,20 @@ const EMPTY_FORM = { service: '', date: '', time: TIMES[0], vehicleId: '', note:
 
 export default function CustomerAppointments() {
   const { user } = useAuth();
-  const [appts,     setAppts]     = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [services,  setServices]  = useState([]);
-  const [vehicles,  setVehicles]  = useState([]);
-  const [form,      setForm]      = useState(EMPTY_FORM);
-  const [saving,    setSaving]    = useState(false);
-  const [error,     setError]     = useState(null);
+  const [appts,          setAppts]          = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [showModal,      setShowModal]      = useState(false);
+  const [services,       setServices]       = useState([]);
+  const [vehicles,       setVehicles]       = useState([]);
+  const [form,           setForm]           = useState(EMPTY_FORM);
+  const [saving,         setSaving]         = useState(false);
+  const [error,          setError]          = useState(null);
+  const [reviewModal,    setReviewModal]    = useState(null);
+  const [reviewRating,   setReviewRating]   = useState(5);
+  const [reviewComment,  setReviewComment]  = useState('');
+  const [reviewSaving,   setReviewSaving]   = useState(false);
+  const [reviewError,    setReviewError]    = useState(null);
+  const [reviewedIds,    setReviewedIds]    = useState(new Set());
 
   useEffect(() => {
     if (!user?.profileId) { setLoading(false); return; }
@@ -80,6 +87,27 @@ export default function CustomerAppointments() {
       setAppts(prev => prev.map(a => a.id === id ? { ...a, status: 'Cancelled' } : a));
     } catch {
       // silently ignore
+    }
+  };
+
+  const openReview = (appointmentId) => {
+    setReviewRating(5);
+    setReviewComment('');
+    setReviewError(null);
+    setReviewModal(appointmentId);
+  };
+
+  const submitReviewHandler = async () => {
+    setReviewSaving(true);
+    setReviewError(null);
+    try {
+      await submitReview({ appointmentId: reviewModal, rating: reviewRating, comment: reviewComment });
+      setReviewedIds(prev => new Set([...prev, reviewModal]));
+      setReviewModal(null);
+    } catch (err) {
+      setReviewError(err?.message || 'Failed to submit review.');
+    } finally {
+      setReviewSaving(false);
     }
   };
 
@@ -159,6 +187,7 @@ export default function CustomerAppointments() {
           ) : past.map(a => {
             const s = STATUS_CONFIG[a.status] || STATUS_CONFIG.Cancelled;
             const Icon = s.icon;
+            const alreadyReviewed = reviewedIds.has(a.id);
             return (
               <div key={a.id} className="flex items-center gap-4 px-5 py-4 hover:bg-card-hover transition-colors">
                 <Icon size={16} className={s.color} />
@@ -166,12 +195,86 @@ export default function CustomerAppointments() {
                   <p className="font-semibold text-foreground text-sm">{a.service}</p>
                   <p className="text-xs text-muted-foreground">{a.date} · {a.time}</p>
                 </div>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.bg}`}>{a.status}</span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.bg}`}>{a.status}</span>
+                  {a.status === 'Completed' && (
+                    alreadyReviewed ? (
+                      <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/50">
+                        <CheckCircle size={10} /> Reviewed
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => openReview(a.id)}
+                        className="flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors cursor-pointer"
+                      >
+                        <Star size={10} /> Leave Review
+                      </button>
+                    )
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* Review Modal */}
+      {reviewModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <h2 className="text-lg font-display font-black text-foreground">Leave a Review</h2>
+              <button onClick={() => setReviewModal(null)} className="text-muted-foreground hover:text-foreground cursor-pointer"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              {reviewError && (
+                <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-2">
+                  {reviewError}
+                </div>
+              )}
+              <div>
+                <label className="form-label mb-2">Your Rating</label>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setReviewRating(n)}
+                      className={`text-2xl transition-transform hover:scale-110 cursor-pointer ${n <= reviewRating ? 'text-amber-400' : 'text-muted-foreground/30'}`}
+                    >
+                      ★
+                    </button>
+                  ))}
+                  <span className="ml-2 text-sm text-muted-foreground self-center">{reviewRating}/5</span>
+                </div>
+              </div>
+              <div>
+                <label className="form-label">Comment (optional)</label>
+                <textarea
+                  value={reviewComment}
+                  onChange={e => setReviewComment(e.target.value)}
+                  rows={3}
+                  placeholder="Share your experience…"
+                  className="form-input resize-none"
+                />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setReviewModal(null)} className="btn-secondary flex-1">Cancel</button>
+                <button
+                  onClick={submitReviewHandler}
+                  disabled={reviewSaving}
+                  className="btn-primary flex-1 justify-center disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
+                >
+                  {reviewSaving
+                    ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <Star size={14} />}
+                  {reviewSaving ? 'Submitting…' : 'Submit Review'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Book Modal */}
       {showModal && (

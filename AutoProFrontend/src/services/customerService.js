@@ -54,6 +54,9 @@ export const addVehicle = (customerId, data) =>
     }),
   });
 
+export const removeVehicle = (customerId, vehicleId) =>
+  apiFetch(`/api/customers/${customerId}/vehicles/${vehicleId}`, { method: 'DELETE' });
+
 export const getCustomerHistory = (id) =>
   apiFetch(`/api/customers/${id}/history`).then(data =>
     data.map(s => ({
