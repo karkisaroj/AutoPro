@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<SaleItem> SaleItems => Set<SaleItem>();
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
     public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
+    public DbSet<Review> Reviews => Set<Review>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

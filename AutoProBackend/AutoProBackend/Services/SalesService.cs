@@ -88,7 +88,7 @@ public class SalesService : ISalesService
         }).ToList();
 
         decimal subtotal = saleItems.Sum(i => i.LineTotal);
-        decimal loyaltyDiscount = subtotal > 5000 ? subtotal * 0.10m : 0;
+        decimal loyaltyDiscount = subtotal >= 5000 ? subtotal * 0.10m : 0;
         decimal tax = (subtotal - loyaltyDiscount) * 0.13m;
         decimal total = subtotal - loyaltyDiscount + tax;
         int pointsAwarded = (int)(total * 0.01m);
