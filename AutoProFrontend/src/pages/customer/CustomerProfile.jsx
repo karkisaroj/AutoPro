@@ -66,7 +66,9 @@ export default function CustomerProfile() {
       await addVehicle(customer.id, {
         vehicleType: vehicleForm.vehicleType.trim(),
         plateNo: vehicleForm.plateNo.trim(),
-        registrationDate: vehicleForm.registrationDate || new Date().toISOString().split('T')[0],
+        registrationDate: vehicleForm.registrationDate
+          ? new Date(vehicleForm.registrationDate + 'T00:00:00Z').toISOString()
+          : null,
       });
       setShowAddVehicle(false);
       setVehicleForm(EMPTY_VEHICLE);

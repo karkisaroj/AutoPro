@@ -132,7 +132,9 @@ public class CustomerService : ICustomerService
             CustomerId = customerId,
             VehicleType = req.VehicleType,
             PlateNo = req.PlateNo,
-            RegistrationDate = req.RegistrationDate
+            RegistrationDate = req.RegistrationDate.HasValue
+                ? DateTime.SpecifyKind(req.RegistrationDate.Value, DateTimeKind.Utc)
+                : null
         };
         _db.Vehicles.Add(vehicle);
         await _db.SaveChangesAsync();

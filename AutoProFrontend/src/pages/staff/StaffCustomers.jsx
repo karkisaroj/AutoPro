@@ -102,7 +102,7 @@ export default function StaffCustomers() {
           await addVehicle(created.id, {
             vehicleType: form.vehicleType.trim(),
             plateNo: form.plateNo.trim(),
-            registrationDate: new Date().toISOString().split('T')[0],
+            registrationDate: new Date().toISOString(),
           });
         } catch (vehicleErr) {
           const refreshed = await getCustomers();
@@ -311,7 +311,7 @@ export default function StaffCustomers() {
                     </div>
 
                     {/* Purchase History */}
-                    <div className="md:col-span-2 mt-2">
+                    <div className="mt-2">
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3">
                         Purchase History
                       </p>

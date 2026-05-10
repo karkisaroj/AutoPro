@@ -66,7 +66,7 @@ public class AppointmentService : IAppointmentService
             CustomerId = req.CustomerId,
             VehicleId = req.VehicleId,
             StaffId = req.StaffId,
-            Date = req.Date.Date,
+            Date = DateTime.SpecifyKind(req.Date.Date, DateTimeKind.Utc),
             Time = time,
             ServiceType = req.ServiceType,
             Notes = req.Notes

@@ -87,11 +87,15 @@ export default function StaffSales() {
     setPartsSearch('');
     setParts(prev => prev.map(p => ({ ...p, qty: 0 })));
     setPaymentMethod('Cash');
+    setSaleError(null);
   };
+
+  const [saleError, setSaleError] = useState(null);
 
   const saveInvoice = async () => {
     if (!selectedCustomer || cartItems.length === 0) return;
     setSaving(true);
+    setSaleError(null);
     try {
       const created = await createSale({
         customerId: selectedCustomer.id,
@@ -102,6 +106,8 @@ export default function StaffSales() {
       setShowNew(false);
       resetForm();
       setToast({ type: 'success', msg: `Sale completed — invoice generated for ${selectedCustomer.name}!` });
+    } catch (err) {
+      setSaleError(err?.message || 'Failed to create invoice. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -121,17 +127,10 @@ export default function StaffSales() {
   const handleSendEmail = async (inv) => {
     setEmailSending(true);
     try {
-
-      const result = await sendInvoiceEmail(inv.id);
-      alert(`Invoice email sent to ${result.sentTo}`);
-    } catch (err) {
-      alert(err?.message || 'Failed to send email. Check SMTP configuration.');
-
       await sendInvoiceEmail(inv.id);
       setToast({ type: 'success', msg: 'Invoice email sent successfully!' });
-    } catch {
-      setToast({ type: 'error', msg: 'Failed to send email. Check SMTP configuration.' });
-
+    } catch (err) {
+      setToast({ type: 'error', msg: err?.message || 'Failed to send email. Check SMTP configuration.' });
     } finally {
       setEmailSending(false);
       setShowEmail(null);
@@ -278,6 +277,29 @@ export default function StaffSales() {
               </button>
             </div>
 
+<<<<<<< HEAD
+            <div className="p-6 space-y-5">
+              {saleError && (
+                <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-2.5">
+                  <X size={14} className="flex-shrink-0 mt-0.5" />
+                  <span>{saleError}</span>
+                </div>
+              )}
+              {/* Customer search */}
+              <div>
+                <label className="form-label">Customer</label>
+                <div className="relative" ref={custRef}>
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      value={customerSearch}
+                      onChange={e => { setCustomerSearch(e.target.value); setSelectedCustomer(null); setShowCustDrop(true); }}
+                      onFocus={() => setShowCustDrop(true)}
+                      placeholder="Search customer by name or phone..."
+                      className="form-input pl-8"
+                    />
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+=======
             {/* Two-panel body */}
             <div className="flex flex-1 min-h-0">
 
@@ -316,6 +338,7 @@ export default function StaffSales() {
                         ))}
                       </div>
                     )}
+>>>>>>> 46689132934a1d8ed9b5c8174d295880c3919355
                   </div>
                   {selectedCustomer && (
                     <div className="mt-2 flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl px-3 py-2">
@@ -496,6 +519,19 @@ export default function StaffSales() {
                       )}
                     </div>
                   )}
+<<<<<<< HEAD
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>VAT (13%)</span>
+                    <span>NPR {vat.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between font-black text-foreground text-base pt-1.5 border-t border-border">
+                    <span>Total</span><span>NPR {total.toLocaleString()}</span>
+                  </div>
+                  {subtotal >= 5000 && <p className="text-xs text-emerald-600 italic">10% loyalty discount applied (spend &gt;= NPR 5,000)</p>}
+                </div>
+              )}
+=======
+>>>>>>> 46689132934a1d8ed9b5c8174d295880c3919355
 
                   {/* Validation hint */}
                   {(!selectedCustomer || cartItems.length === 0) && (
