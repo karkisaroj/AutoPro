@@ -26,7 +26,7 @@ export default function AdminOverview() {
     Promise.all([
       getFinancialReport(),
       getStaff(),
-      getParts(),
+      getParts(1, 1000).then(r => r.data),
       getLowStockParts(),
       getSales(),
     ]).then(([financial, staffList, partsList, lowStockList, salesList]) => {
