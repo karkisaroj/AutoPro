@@ -74,11 +74,15 @@ export default function StaffSales() {
     setCart([]);
     setParts(prev => prev.map(p => ({ ...p, qty: 0 })));
     setPaymentMethod('Cash');
+    setSaleError(null);
   };
+
+  const [saleError, setSaleError] = useState(null);
 
   const saveInvoice = async () => {
     if (!selectedCustomer || cartItems.length === 0) return;
     setSaving(true);
+    setSaleError(null);
     try {
       const created = await createSale({
         customerId: selectedCustomer.id,
@@ -88,6 +92,8 @@ export default function StaffSales() {
       setInvoices(prev => [created, ...prev]);
       setShowNew(false);
       resetForm();
+    } catch (err) {
+      setSaleError(err?.message || 'Failed to create invoice. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -196,6 +202,12 @@ export default function StaffSales() {
             </div>
 
             <div className="p-6 space-y-5">
+              {saleError && (
+                <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-2.5">
+                  <X size={14} className="flex-shrink-0 mt-0.5" />
+                  <span>{saleError}</span>
+                </div>
+              )}
               {/* Customer search */}
               <div>
                 <label className="form-label">Customer</label>
@@ -301,7 +313,7 @@ export default function StaffSales() {
                   <div className="flex justify-between font-black text-foreground text-base pt-1.5 border-t border-border">
                     <span>Total</span><span>NPR {total.toLocaleString()}</span>
                   </div>
-                  {subtotal >= 5000 && <p className="text-xs text-emerald-600 italic">🎉 10% loyalty discount applied (spend &gt; NPR 5,000)</p>}
+                  {subtotal >= 5000 && <p className="text-xs text-emerald-600 italic">10% loyalty discount applied (spend &gt;= NPR 5,000)</p>}
                 </div>
               )}
 

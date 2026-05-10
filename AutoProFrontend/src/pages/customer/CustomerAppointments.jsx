@@ -4,7 +4,7 @@ import { PageHeader, Spinner } from '../../components/ui/index';
 import { useAuth } from '../../context/AuthContext';
 import { getMyAppointments, createAppointment, cancelAppointment, getAvailableServices } from '../../services/appointmentService';
 import { getCustomerById } from '../../services/customerService';
-import { submitReview } from '../../services/reviewService';
+import { submitReview, getReviewForAppointment } from '../../services/reviewService';
 
 const TIMES = ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
 
@@ -40,7 +40,7 @@ export default function CustomerAppointments() {
       getMyAppointments(),
       getAvailableServices(),
       getCustomerById(user.profileId),
-    ]).then(([apptList, svcList, customer]) => {
+    ]).then(async ([apptList, svcList, customer]) => {
       setAppts(apptList);
       setServices(svcList);
       setVehicles(customer.vehicles || []);
@@ -49,6 +49,14 @@ export default function CustomerAppointments() {
         service:   svcList[0] || '',
         vehicleId: customer.vehicles?.[0]?.id?.toString() || '',
       }));
+
+      const completedIds = apptList.filter(a => a.status === 'Completed').map(a => a.id);
+      const checks = await Promise.allSettled(completedIds.map(id => getReviewForAppointment(id)));
+      const alreadyReviewed = new Set(
+        completedIds.filter((_, i) => checks[i].status === 'fulfilled')
+      );
+      setReviewedIds(alreadyReviewed);
+
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [user]);
