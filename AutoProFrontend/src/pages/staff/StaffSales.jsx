@@ -96,10 +96,10 @@ export default function StaffSales() {
   const handleSendEmail = async (inv) => {
     setEmailSending(true);
     try {
-      await sendInvoiceEmail(inv.id);
-      alert('Invoice email sent successfully!');
-    } catch {
-      alert('Failed to send email. Check SMTP configuration.');
+      const result = await sendInvoiceEmail(inv.id);
+      alert(`Invoice email sent to ${result.sentTo}`);
+    } catch (err) {
+      alert(err?.message || 'Failed to send email. Check SMTP configuration.');
     } finally {
       setEmailSending(false);
       setShowEmail(null);
@@ -329,12 +329,23 @@ export default function StaffSales() {
             </div>
             <div className="bg-muted rounded-xl p-4 text-sm space-y-2 mb-4">
               <p><span className="text-muted-foreground">To:</span> <strong className="text-foreground">{showEmail.customerName}</strong></p>
+              <p>
+                <span className="text-muted-foreground">Email:</span>{' '}
+                <span className="font-mono text-xs text-foreground font-semibold">
+                  {showEmail.customerEmail || 'No email on file'}
+                </span>
+              </p>
               <p><span className="text-muted-foreground">Subject:</span> Invoice #{showEmail.id} — AutoPro Garage</p>
-              <p className="text-muted-foreground text-xs mt-2">Invoice for NPR {showEmail.total?.toLocaleString()} will be sent to the customer's registered email.</p>
+              <p><span className="text-muted-foreground">Amount:</span> <strong className="text-foreground">NPR {showEmail.total?.toLocaleString()}</strong></p>
             </div>
+            {!showEmail.customerEmail && (
+              <p className="text-xs text-red-600 dark:text-red-400 mb-3">
+                This customer has no email address registered. Update their profile first.
+              </p>
+            )}
             <div className="flex gap-3">
               <button onClick={() => setShowEmail(null)} className="btn-secondary flex-1">Cancel</button>
-              <button onClick={() => handleSendEmail(showEmail)} disabled={emailSending} className="btn-primary flex-1 disabled:opacity-50">
+              <button onClick={() => handleSendEmail(showEmail)} disabled={emailSending || !showEmail.customerEmail} className="btn-primary flex-1 disabled:opacity-50">
                 {emailSending ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={16} />}
                 Send Email
               </button>

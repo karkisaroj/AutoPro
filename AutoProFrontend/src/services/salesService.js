@@ -12,6 +12,7 @@ const adapt = (s) => ({
   date: s.date ? s.date.split('T')[0] : '',
   customerId: s.customerId,
   customerName: s.customerName,
+  customerEmail: s.customerEmail || '',
   vehicle: '',
   plateNo: '',
   items: (s.items || []).map(adaptItem),
