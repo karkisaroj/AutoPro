@@ -1,1 +1,0 @@
-- in the first feature the admin can view the financial reports however they cannot generate financial reports. use quest pdf for this report generation.
