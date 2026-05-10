@@ -122,6 +122,7 @@ public class SalesService : ISalesService
         await _db.SaveChangesAsync();
 
         await _db.Entry(sale).Reference(s => s.Customer).LoadAsync();
+        await _db.Entry(sale.Customer).Reference(c => c.User).LoadAsync();
         await _db.Entry(sale).Reference(s => s.Staff).LoadAsync();
 
         return (MapToResponse(sale), null, false);
