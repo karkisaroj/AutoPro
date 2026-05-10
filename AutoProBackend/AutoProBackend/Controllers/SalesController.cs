@@ -79,9 +79,9 @@ public class SalesController : ControllerBase
     {
         try
         {
-            var sent = await _sales.SendInvoiceEmailAsync(id);
-            if (!sent) return NotFound();
-            return Ok(new { message = "Invoice email sent" });
+            var sentTo = await _sales.SendInvoiceEmailAsync(id);
+            if (sentTo == null) return NotFound();
+            return Ok(new { message = $"Invoice email sent to {sentTo}", sentTo });
         }
         catch (Exception ex)
         {

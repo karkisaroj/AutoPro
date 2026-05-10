@@ -121,10 +121,17 @@ export default function StaffSales() {
   const handleSendEmail = async (inv) => {
     setEmailSending(true);
     try {
+
+      const result = await sendInvoiceEmail(inv.id);
+      alert(`Invoice email sent to ${result.sentTo}`);
+    } catch (err) {
+      alert(err?.message || 'Failed to send email. Check SMTP configuration.');
+
       await sendInvoiceEmail(inv.id);
       setToast({ type: 'success', msg: 'Invoice email sent successfully!' });
     } catch {
       setToast({ type: 'error', msg: 'Failed to send email. Check SMTP configuration.' });
+
     } finally {
       setEmailSending(false);
       setShowEmail(null);
@@ -533,6 +540,17 @@ export default function StaffSales() {
               <h3 className="text-base font-display font-black text-foreground">Send Invoice Email</h3>
               <button onClick={() => setShowEmail(null)} className="text-muted-foreground hover:text-foreground cursor-pointer"><X size={18} /></button>
             </div>
+
+            <div className="bg-muted rounded-xl p-4 text-sm space-y-2 mb-4">
+              <p><span className="text-muted-foreground">To:</span> <strong className="text-foreground">{showEmail.customerName}</strong></p>
+              <p>
+                <span className="text-muted-foreground">Email:</span>{' '}
+                <span className="font-mono text-xs text-foreground font-semibold">
+                  {showEmail.customerEmail || 'No email on file'}
+                </span>
+              </p>
+              <p><span className="text-muted-foreground">Subject:</span> Invoice #{showEmail.id} — AutoPro Garage</p>
+              <p><span className="text-muted-foreground">Amount:</span> <strong className="text-foreground">NPR {showEmail.total?.toLocaleString()}</strong></p>
             <div className="bg-muted/50 border border-border rounded-xl p-4 text-sm space-y-1.5 mb-4">
               <p><span className="text-muted-foreground text-xs">To:</span> <strong className="text-foreground">{showEmail.customerName}</strong></p>
               <p><span className="text-muted-foreground text-xs">Subject:</span> <span className="text-foreground text-xs">Invoice #{showEmail.id} — AutoPro Garage</span></p>
@@ -540,8 +558,17 @@ export default function StaffSales() {
                 Invoice for <strong>NPR {showEmail.total?.toLocaleString()}</strong> will be sent to the customer's registered email.
               </p>
             </div>
+            {!showEmail.customerEmail && (
+              <p className="text-xs text-red-600 dark:text-red-400 mb-3">
+                This customer has no email address registered. Update their profile first.
+              </p>
+            )}
             <div className="flex gap-3">
               <button onClick={() => setShowEmail(null)} className="btn-secondary flex-1">Cancel</button>
+
+              <button onClick={() => handleSendEmail(showEmail)} disabled={emailSending || !showEmail.customerEmail} className="btn-primary flex-1 disabled:opacity-50">
+                {emailSending ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={16} />}
+
               <button onClick={() => handleSendEmail(showEmail)} disabled={emailSending} className="btn-primary flex-1 disabled:opacity-50 cursor-pointer">
                 {emailSending
                   ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
