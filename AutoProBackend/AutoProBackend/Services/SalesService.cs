@@ -19,7 +19,7 @@ public class SalesService : ISalesService
     public async Task<List<SaleResponse>> GetAllAsync(string? status, DateTime? from, DateTime? to)
     {
         var query = _db.Sales
-            .Include(s => s.Customer)
+            .Include(s => s.Customer).ThenInclude(c => c.User)
             .Include(s => s.Staff)
             .Include(s => s.Items)
             .AsQueryable();
@@ -34,7 +34,7 @@ public class SalesService : ISalesService
     public async Task<SaleResponse?> GetByIdAsync(int id)
     {
         var sale = await _db.Sales
-            .Include(s => s.Customer)
+            .Include(s => s.Customer).ThenInclude(c => c.User)
             .Include(s => s.Staff)
             .Include(s => s.Items).ThenInclude(i => i.Part)
             .FirstOrDefaultAsync(s => s.Id == id);
@@ -43,7 +43,7 @@ public class SalesService : ISalesService
 
     public async Task<List<SaleResponse>> GetByCustomerAsync(int customerId) =>
         await _db.Sales
-            .Include(s => s.Customer)
+            .Include(s => s.Customer).ThenInclude(c => c.User)
             .Include(s => s.Staff)
             .Include(s => s.Items)
             .Where(s => s.CustomerId == customerId)
@@ -127,17 +127,18 @@ public class SalesService : ISalesService
         return (MapToResponse(sale), null, false);
     }
 
-    public async Task<bool> SendInvoiceEmailAsync(int id)
+    public async Task<string?> SendInvoiceEmailAsync(int id)
     {
         var sale = await _db.Sales
             .Include(s => s.Customer).ThenInclude(c => c.User)
+            .Include(s => s.Staff)
             .Include(s => s.Items)
             .FirstOrDefaultAsync(s => s.Id == id);
 
-        if (sale == null) return false;
+        if (sale == null) return null;
 
         var email = sale.Customer?.User?.Email;
-        if (string.IsNullOrWhiteSpace(email)) return false;
+        if (string.IsNullOrWhiteSpace(email)) return null;
 
         var itemRows = string.Join("", sale.Items.Select((i, idx) =>
         {
@@ -270,7 +271,7 @@ public class SalesService : ISalesService
 </html>";
 
         await _email.SendAsync(email, $"AutoPro Invoice #{sale.Id}", body);
-        return true;
+        return email;
     }
 
     private static string CalculateTier(decimal totalSpent) => totalSpent switch
@@ -286,6 +287,7 @@ public class SalesService : ISalesService
         Id = s.Id,
         CustomerId = s.CustomerId,
         CustomerName = s.Customer?.Name ?? string.Empty,
+        CustomerEmail = s.Customer?.User?.Email ?? string.Empty,
         StaffId = s.StaffId,
         StaffName = s.Staff?.Name ?? string.Empty,
         Date = s.Date,

@@ -7,6 +7,7 @@ public class SaleResponse
     public int Id { get; set; }
     public int CustomerId { get; set; }
     public string CustomerName { get; set; } = string.Empty;
+    public string CustomerEmail { get; set; } = string.Empty;
     public int StaffId { get; set; }
     public string StaffName { get; set; } = string.Empty;
     public DateTime Date { get; set; }

@@ -28,6 +28,7 @@ public class EmailService : IEmailService
         var username = _config["Email:Username"] ?? string.Empty;
         var password = _config["Email:Password"] ?? string.Empty;
         var from     = _config["Email:From"]     ?? username;
+        var fromName = _config["Email:FromName"] ?? "AutoPro Garage";
 
         if (password == "YOUR_GMAIL_APP_PASSWORD_HERE")
         {
@@ -37,7 +38,7 @@ public class EmailService : IEmailService
         }
 
         var message = new MimeMessage();
-        message.From.Add(MailboxAddress.Parse(from));
+        message.From.Add(new MailboxAddress(fromName, from));
         message.To.Add(MailboxAddress.Parse(to));
         message.Subject = subject;
         message.Body = new TextPart("html") { Text = body };

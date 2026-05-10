@@ -8,5 +8,5 @@ public interface ISalesService
     Task<SaleResponse?> GetByIdAsync(int id);
     Task<List<SaleResponse>> GetByCustomerAsync(int customerId);
     Task<(SaleResponse? response, string? errorMessage, bool forbidden)> CreateAsync(CreateSaleRequest req, int staffUserId);
-    Task<bool> SendInvoiceEmailAsync(int id);
+    Task<string?> SendInvoiceEmailAsync(int id);
 }
