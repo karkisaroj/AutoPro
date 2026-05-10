@@ -2,20 +2,46 @@ using AutoProBackend.Data;
 using AutoProBackend.DTOs;
 using AutoProBackend.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace AutoProBackend.Services;
 
 public class PartsService : IPartsService
 {
     private readonly AppDbContext _db;
-    public PartsService(AppDbContext db) => _db = db;
+    private readonly IMemoryCache _cache;
+    private const string CacheKey = "parts_all";
 
-    public async Task<List<PartResponse>> GetAllAsync(string? category)
+    public PartsService(AppDbContext db, IMemoryCache cache)
     {
-        var query = _db.Parts.Include(p => p.Vendor).AsQueryable();
-        if (!string.IsNullOrWhiteSpace(category))
-            query = query.Where(p => p.Category == category);
-        return await query.Select(p => MapToResponse(p)).ToListAsync();
+        _db    = db;
+        _cache = cache;
+    }
+
+    public async Task<PagedResult<PartResponse>> GetAllAsync(string? category, int page, int pageSize)
+    {
+        // Try to get all parts from cache; if not cached, fetch from DB and store for 30 seconds
+        if (!_cache.TryGetValue(CacheKey, out List<PartResponse>? allParts))
+        {
+            var parts = await _db.Parts.Include(p => p.Vendor).OrderBy(p => p.Name).ToListAsync();
+            allParts = parts.Select(MapToResponse).ToList();
+            _cache.Set(CacheKey, allParts, TimeSpan.FromSeconds(30));
+        }
+
+        // Filter by category in memory (no extra DB call needed)
+        var filtered = string.IsNullOrWhiteSpace(category)
+            ? allParts!
+            : allParts!.Where(p => p.Category == category).ToList();
+
+        var total = filtered.Count;
+        return new PagedResult<PartResponse>
+        {
+            TotalCount = total,
+            Page       = page,
+            PageSize   = pageSize,
+            TotalPages = (int)Math.Ceiling((double)total / pageSize),
+            Data       = filtered.Skip((page - 1) * pageSize).Take(pageSize).ToList()
+        };
     }
 
     public async Task<PartResponse?> GetByIdAsync(int id)
@@ -58,6 +84,7 @@ public class PartsService : IPartsService
         };
         _db.Parts.Add(part);
         await _db.SaveChangesAsync();
+        _cache.Remove(CacheKey); // new part added — clear cache so next request reloads from DB
         await _db.Entry(part).Reference(p => p.Vendor).LoadAsync();
         return (MapToResponse(part), false);
     }
@@ -82,6 +109,7 @@ public class PartsService : IPartsService
         }
 
         await _db.SaveChangesAsync();
+        _cache.Remove(CacheKey); // part updated — clear cache
         return true;
     }
 
@@ -92,6 +120,7 @@ public class PartsService : IPartsService
 
         _db.Parts.Remove(part);
         await _db.SaveChangesAsync();
+        _cache.Remove(CacheKey); // part deleted — clear cache
         return true;
     }
 

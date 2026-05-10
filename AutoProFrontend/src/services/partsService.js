@@ -26,8 +26,16 @@ const adaptPO = (po) => ({
   notes: po.notes || '',
 });
 
-export const getParts = () =>
-  apiFetch('/api/parts').then(data => data.map(adaptPart));
+export const getParts = (page = 1, pageSize = 10, category = null) => {
+  const params = new URLSearchParams({ page, pageSize });
+  if (category) params.append('category', category);
+  return apiFetch(`/api/parts?${params}`).then(res => ({
+    data:       (res.data || []).map(adaptPart),
+    totalCount: res.totalCount,
+    totalPages: res.totalPages,
+    page:       res.page,
+  }));
+};
 
 export const getLowStockParts = () =>
   apiFetch('/api/parts/low-stock').then(data =>
