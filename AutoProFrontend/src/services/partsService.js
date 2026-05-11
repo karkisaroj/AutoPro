@@ -26,9 +26,10 @@ const adaptPO = (po) => ({
   notes: po.notes || '',
 });
 
-export const getParts = (page = 1, pageSize = 10, category = null) => {
+export const getParts = (page = 1, pageSize = 10, category = null, search = null) => {
   const params = new URLSearchParams({ page, pageSize });
   if (category) params.append('category', category);
+  if (search)   params.append('search', search);
   return apiFetch(`/api/parts?${params}`).then(res => ({
     data:       (res.data || []).map(adaptPart),
     totalCount: res.totalCount,
@@ -46,13 +47,8 @@ export const getPurchaseOrders = () =>
   apiFetch('/api/purchase-orders').then(data => data.map(adaptPO));
 
 export const createPart = async (data) => {
-  // Resolve supplier name → vendorId by fetching vendors
-  let vendorId = data.vendorId;
-  if (!vendorId && data.supplier) {
-    const vendors = await apiFetch('/api/vendors');
-    const match = vendors.find(v => v.name.toLowerCase() === data.supplier.toLowerCase());
-    vendorId = match?.id ?? (vendors[0]?.id ?? 1);
-  }
+  const vendorId = data.vendorId ? Number(data.vendorId) : null;
+  if (!vendorId) throw new Error('Please select a vendor before saving.');
 
   const created = await apiFetch('/api/parts', {
     method: 'POST',
@@ -71,12 +67,7 @@ export const createPart = async (data) => {
 };
 
 export const updatePart = async (id, data) => {
-  let vendorId = data.vendorId;
-  if (!vendorId && data.supplier) {
-    const vendors = await apiFetch('/api/vendors');
-    const match = vendors.find(v => v.name.toLowerCase() === data.supplier.toLowerCase());
-    if (match) vendorId = match.id;
-  }
+  const vendorId = data.vendorId ? Number(data.vendorId) : undefined;
 
   await apiFetch(`/api/parts/${id}`, {
     method: 'PUT',

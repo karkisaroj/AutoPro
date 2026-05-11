@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Package, Plus, Edit2, Trash2, AlertTriangle, Search, Check, Layers, Tag, FileText, CheckCircle } from 'lucide-react';
 import { getParts, createPart, updatePart, deletePart, createPurchaseOrder } from '../../services/partsService';
 import { getVendors } from '../../services/vendorService';
@@ -10,7 +10,7 @@ const CATEGORIES = ['Engine', 'Brakes', 'Tyres', 'Electrical', 'Suspension', 'Fl
 const UNITS      = ['pcs', 'litre', 'set', 'pair', 'roll', 'box'];
 
 const EMPTY_FORM = {
-  name: '', category: 'Engine', sku: '', price: '', quantity: 0, minStock: 5, vendorId: '', unit: 'pcs',
+  name: '', category: 'Engine', sku: '', price: '', quantity: 0, minStock: 10, vendorId: '', unit: 'pcs',
 };
 
 const EMPTY_PO_FORM = { quantity: 10, unitCost: '', notes: '' };
@@ -44,7 +44,12 @@ export default function AdminParts() {
   const [saveError, setSaveError] = useState(null);
 
   // Delete confirm
-  const [confirm,   setConfirm]   = useState(null);
+  const [confirm,     setConfirm]     = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+
+  // Debounced search — avoids firing an API call on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debounceTimer = useRef(null);
 
   // Purchase Order modal
   const [poTarget,  setPoTarget]  = useState(null);
@@ -53,10 +58,21 @@ export default function AdminParts() {
   const [poError,   setPoError]   = useState(null);
   const [poSuccess, setPoSuccess] = useState(null);
 
+  // When the search input changes, wait 400 ms before firing the API call
+  useEffect(() => {
+    clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setPage(1);
+      setDebouncedSearch(search.trim());
+    }, 400);
+    return () => clearTimeout(debounceTimer.current);
+  }, [search]);
+
   useEffect(() => {
     setLoading(true);
-    const category = catFilter === 'All' ? null : catFilter;
-    Promise.all([getParts(page, PAGE_SIZE, category), getVendors()])
+    const category   = catFilter === 'All' ? null : catFilter;
+    const searchTerm = debouncedSearch || null;
+    Promise.all([getParts(page, PAGE_SIZE, category, searchTerm), getVendors()])
       .then(([partsRes, vendorsData]) => {
         setParts(partsRes.data);
         setTotalPages(partsRes.totalPages);
@@ -65,7 +81,7 @@ export default function AdminParts() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [page, catFilter]);
+  }, [page, catFilter, debouncedSearch]);
 
   // When category changes, go back to page 1
   const handleCatChange = (newCat) => { setCatFilter(newCat); setPage(1); };
@@ -77,15 +93,7 @@ export default function AdminParts() {
     return byCategory.length > 0 ? byCategory : activeVendors;
   })();
 
-  // ── Filtering ─────────────────────────────────────────────────────────────
-  // Category filtering is handled server-side; search filters within the loaded page
-  const filtered = parts.filter(p => {
-    const q = search.toLowerCase();
-    return p.name.toLowerCase().includes(q) ||
-      (p.sku || '').toLowerCase().includes(q) ||
-      (p.supplier || '').toLowerCase().includes(q);
-  });
-
+  // Category and search filtering are both handled server-side
   const lowStock = parts.filter(p => p.quantity <= p.minStock);
   const tabs     = ['All', ...CATEGORIES];
 
@@ -149,9 +157,14 @@ export default function AdminParts() {
   };
 
   const handleDelete = async () => {
-    await deletePart(confirm.id);
-    await refreshParts();
-    setConfirm(null);
+    try {
+      await deletePart(confirm.id);
+      await refreshParts();
+    } catch (err) {
+      setDeleteError(err?.message || 'Failed to delete part. Please try again.');
+    } finally {
+      setConfirm(null);
+    }
   };
 
   // ── Purchase Order ────────────────────────────────────────────────────────
@@ -211,6 +224,15 @@ export default function AdminParts() {
         {stats.map((s, i) => <StatCard key={i} {...s} loading={loading} />)}
       </div>
 
+      {/* Delete error banner */}
+      {deleteError && (
+        <div className="dash-card border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/10 flex items-start gap-3">
+          <AlertTriangle size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm font-semibold text-red-800 dark:text-red-400 flex-1">{deleteError}</p>
+          <button onClick={() => setDeleteError(null)} className="text-red-400 hover:text-red-600 transition-colors text-xs font-bold">✕</button>
+        </div>
+      )}
+
       {/* Low-stock alert */}
       {!loading && lowStock.length > 0 && (
         <div className="dash-card border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/10 flex items-start gap-3">
@@ -264,13 +286,13 @@ export default function AdminParts() {
               </tr>
             </thead>
             <tbody>
-              {loading ? <TableSkeleton cols={8} rows={6} /> : filtered.length === 0 ? (
+              {loading ? <TableSkeleton cols={8} rows={6} /> : parts.length === 0 ? (
                 <tr>
                   <td colSpan={8}>
                     <EmptyState icon={Package} title="No parts found" description="Add inventory or adjust your filters." />
                   </td>
                 </tr>
-              ) : filtered.map(p => {
+              ) : parts.map(p => {
                 const isLow = p.quantity <= p.minStock;
                 return (
                   <tr key={p.id}>
