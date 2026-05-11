@@ -18,7 +18,7 @@ import AdminDashboard    from './pages/AdminDashboard';
 import StaffDashboard    from './pages/StaffDashboard';
 import CustomerDashboard from './pages/CustomerDashboard';
 
-const BARE_PREFIXES = ['/admin', '/staff', '/customer'];
+const BARE_PREFIXES = ['/admin', '/staff', '/customer', '/login', '/register'];
 
 function RedirectIfAuthenticated({ children }) {
   const { isAuthenticated, user } = useAuth();
@@ -52,6 +52,8 @@ function Layout() {
             <CustomerDashboard />
           </ProtectedRoute>
         } />
+        <Route path="/login"    element={<RedirectIfAuthenticated><Login /></RedirectIfAuthenticated>} />
+        <Route path="/register" element={<RedirectIfAuthenticated><Register /></RedirectIfAuthenticated>} />
       </Routes>
     );
   }
@@ -67,8 +69,6 @@ function Layout() {
           <Route path="/services" element={<Services />} />
           <Route path="/about"    element={<AboutUs />}  />
           <Route path="/contact"  element={<Contact />}  />
-          <Route path="/login"    element={<RedirectIfAuthenticated><Login /></RedirectIfAuthenticated>} />
-          <Route path="/register" element={<RedirectIfAuthenticated><Register /></RedirectIfAuthenticated>} />
         </Routes>
       </main>
       <Footer />
