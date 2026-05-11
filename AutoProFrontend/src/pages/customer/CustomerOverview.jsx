@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, FileText, Cpu, Car, Clock, TrendingUp, Star, User } from 'lucide-react';
+import { Calendar, FileText, Cpu, Car, Clock, TrendingUp, Star, User, Package } from 'lucide-react';
 import { getCustomerById } from '../../services/customerService';
 import { getMyAppointments } from '../../services/appointmentService';
 import { useAuth } from '../../context/AuthContext';
 import { Spinner } from '../../components/ui/index';
 
 const QUICK_LINKS = [
-  { to: '/customer/appointments', label: 'Book Appointment', icon: Calendar, desc: 'Schedule a new service visit',   color: 'emerald' },
-  { to: '/customer/history',      label: 'Service History',  icon: FileText,  desc: 'View past invoices & receipts', color: 'blue'    },
-  { to: '/customer/profile',      label: 'My Profile',       icon: User,      desc: 'Update details & vehicles',     color: 'amber'   },
-  { to: '/customer/diagnostics',  label: 'AI Diagnostics',   icon: Cpu,       desc: 'Run a vehicle health scan',     color: 'violet'  },
+  { to: '/customer/appointments',  label: 'Book Appointment', icon: Calendar, desc: 'Schedule a new service visit',   color: 'emerald' },
+  { to: '/customer/history',       label: 'Service History',  icon: FileText, desc: 'View past invoices & receipts',  color: 'blue'    },
+  { to: '/customer/part-requests', label: 'Request a Part',   icon: Package,  desc: 'Ask for an out-of-stock part',   color: 'violet'  },
+  { to: '/customer/profile',       label: 'My Profile',       icon: User,     desc: 'Update details & vehicles',      color: 'amber'   },
 ];
 
 const ICON_BG = {
