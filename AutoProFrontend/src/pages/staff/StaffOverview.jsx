@@ -6,6 +6,13 @@ import { PageHeader, StatusBadge, Spinner, Avatar } from '../../components/ui/in
 import StatCard from '../../components/ui/StatCard';
 import { useAuth } from '../../context/AuthContext';
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export default function StaffOverview() {
   const { user } = useAuth();
   const [sales, setSales]        = useState([]);
@@ -46,7 +53,7 @@ export default function StaffOverview() {
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 70% 50%, white 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
         <div className="relative">
-          <p className="text-white/75 text-sm font-semibold">Good morning,</p>
+          <p className="text-white/75 text-sm font-semibold">{getGreeting()},</p>
           <h1 className="text-2xl font-display font-black">{user?.name} 👋</h1>
           <p className="text-white/70 text-sm mt-1">Service Advisor · AutoPro Garage, Kathmandu</p>
         </div>
@@ -66,26 +73,33 @@ export default function StaffOverview() {
             <h2 className="font-display font-bold text-foreground">Today's Transactions</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full data-table">
-              <thead>
-                <tr>{['Invoice', 'Customer', 'Amount', 'Status'].map(h => <th key={h}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {todaySales.map(s => (
-                  <tr key={s.id}>
-                    <td className="font-mono text-xs text-muted-foreground">{s.id}</td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <Avatar name={s.customerName} size="sm" color="blue" />
-                        <p className="font-semibold text-foreground text-xs">{s.customerName}</p>
-                      </div>
-                    </td>
-                    <td className="font-bold text-foreground">NPR {s.amount.toLocaleString()}</td>
-                    <td><StatusBadge status={s.status} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {todaySales.length === 0 ? (
+              <div className="p-10 text-center">
+                <ShoppingCart size={28} className="mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No completed sales yet today.</p>
+              </div>
+            ) : (
+              <table className="w-full data-table">
+                <thead>
+                  <tr>{['Invoice', 'Customer', 'Amount', 'Status'].map(h => <th key={h}>{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {todaySales.map(s => (
+                    <tr key={s.id}>
+                      <td className="font-mono text-xs text-muted-foreground">{s.id}</td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <Avatar name={s.customerName} size="sm" color="blue" />
+                          <p className="font-semibold text-foreground text-xs">{s.customerName}</p>
+                        </div>
+                      </td>
+                      <td className="font-bold text-foreground">NPR {s.amount.toLocaleString()}</td>
+                      <td><StatusBadge status={s.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
@@ -113,14 +127,19 @@ export default function StaffOverview() {
         </div>
       </div>
 
-      {/* Quick tip */}
+      {/* Summary tip */}
       <div className="dash-card p-5 flex items-start gap-4 border-l-4 border-primary">
         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
           <TrendingUp size={18} className="text-primary" />
         </div>
         <div>
-          <p className="font-bold text-foreground text-sm">Performance Tip</p>
-          <p className="text-sm text-muted-foreground mt-1">You are on track to beat last week's revenue by <strong className="text-emerald-600">18%</strong>. Keep up the great work! Aim to close all pending invoices before EOD.</p>
+          <p className="font-bold text-foreground text-sm">Today's Summary</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {todaySales.length > 0
+              ? <>Completed <strong className="text-foreground">{todaySales.length}</strong> sale{todaySales.length !== 1 ? 's' : ''} totalling <strong className="text-emerald-600">NPR {todayRevenue.toLocaleString()}</strong>.{pendingSales.length > 0 && <> Close <strong className="text-amber-600">{pendingSales.length}</strong> pending invoice{pendingSales.length !== 1 ? 's' : ''} before EOD.</>}</>
+              : <>No sales recorded yet today. <strong className="text-foreground">{upcomingApts.length}</strong> appointment{upcomingApts.length !== 1 ? 's' : ''} upcoming — great opportunity to close sales.</>
+            }
+          </p>
         </div>
       </div>
     </div>
