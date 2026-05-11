@@ -36,8 +36,13 @@ public class VendorsController : ControllerBase
         await _vendors.UpdateAsync(id, req) ? NoContent() : NotFound();
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id) =>
-        await _vendors.DeleteAsync(id) ? NoContent() : NotFound();
+    public async Task<IActionResult> Delete(int id)
+    {
+        var (found, inUse) = await _vendors.DeleteAsync(id);
+        if (!found) return NotFound();
+        if (inUse) return Conflict(new { message = "Cannot delete this vendor — they have parts or purchase orders on record. Remove those first." });
+        return NoContent();
+    }
 
     [HttpPatch("{id}/toggle-status")]
     public async Task<IActionResult> ToggleStatus(int id)
