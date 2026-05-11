@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, FileText, Cpu, Car, Clock, TrendingUp, Star } from 'lucide-react';
+import { Calendar, FileText, Cpu, Car, Clock, TrendingUp, Star, User } from 'lucide-react';
 import { getCustomerById } from '../../services/customerService';
 import { getMyAppointments } from '../../services/appointmentService';
 import { useAuth } from '../../context/AuthContext';
@@ -9,6 +9,7 @@ import { Spinner } from '../../components/ui/index';
 const QUICK_LINKS = [
   { to: '/customer/appointments', label: 'Book Appointment', icon: Calendar, desc: 'Schedule a new service visit',   color: 'emerald' },
   { to: '/customer/history',      label: 'Service History',  icon: FileText,  desc: 'View past invoices & receipts', color: 'blue'    },
+  { to: '/customer/profile',      label: 'My Profile',       icon: User,      desc: 'Update details & vehicles',     color: 'amber'   },
   { to: '/customer/diagnostics',  label: 'AI Diagnostics',   icon: Cpu,       desc: 'Run a vehicle health scan',     color: 'violet'  },
 ];
 
@@ -101,7 +102,7 @@ export default function CustomerOverview() {
       {/* Quick Actions */}
       <div>
         <h2 className="section-label mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {QUICK_LINKS.map(q => {
             const Icon = q.icon;
             return (

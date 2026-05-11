@@ -1,25 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { User, Car, Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import { User, Car, Plus, Trash2, Edit2, Check, X, Save } from 'lucide-react';
 import { PageHeader, Spinner } from '../../components/ui/index';
 import { useAuth } from '../../context/AuthContext';
-import { getCustomerById, updateCustomer, addVehicle, removeVehicle } from '../../services/customerService';
+import {
+  getCustomerById,
+  updateCustomer,
+  addVehicle,
+  updateVehicle,
+  removeVehicle,
+} from '../../services/customerService';
+
+const AUTO_DISMISS_MS = 3500;
 
 const EMPTY_VEHICLE = { vehicleType: '', plateNo: '', registrationDate: '' };
 
 export default function CustomerProfile() {
   const { user } = useAuth();
-  const [customer,    setCustomer]    = useState(null);
-  const [loading,     setLoading]     = useState(true);
-  const [editing,     setEditing]     = useState(false);
-  const [profileForm, setProfileForm] = useState({ name: '', phone: '', licenseId: '' });
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [profileMsg,  setProfileMsg]  = useState(null);
+  const [customer,      setCustomer]      = useState(null);
+  const [loading,       setLoading]       = useState(true);
 
+  // ── profile edit ──
+  const [editing,       setEditing]       = useState(false);
+  const [profileForm,   setProfileForm]   = useState({ name: '', phone: '', licenseId: '' });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMsg,    setProfileMsg]    = useState(null);
+
+  // ── add vehicle ──
   const [showAddVehicle, setShowAddVehicle] = useState(false);
-  const [vehicleForm,  setVehicleForm]  = useState(EMPTY_VEHICLE);
-  const [savingVehicle, setSavingVehicle] = useState(false);
-  const [vehicleError, setVehicleError] = useState(null);
+  const [vehicleForm,    setVehicleForm]    = useState(EMPTY_VEHICLE);
+  const [savingVehicle,  setSavingVehicle]  = useState(false);
+  const [vehicleError,   setVehicleError]   = useState(null);
+
+  // ── edit vehicle ──
+  const [editingVehicleId,   setEditingVehicleId]   = useState(null);
+  const [vehicleEditForm,    setVehicleEditForm]    = useState(EMPTY_VEHICLE);
+  const [savingVehicleEdit,  setSavingVehicleEdit]  = useState(false);
+  const [vehicleEditError,   setVehicleEditError]   = useState(null);
+
+  // ── remove vehicle ──
   const [removingId,   setRemovingId]   = useState(null);
+
+  // ── vehicle-level feedback (success / error banner above the list) ──
+  const [vehicleMsg,   setVehicleMsg]   = useState(null);
+
+  const showVehicleMsg = (type, text) => {
+    setVehicleMsg({ type, text });
+    setTimeout(() => setVehicleMsg(null), AUTO_DISMISS_MS);
+  };
 
   const load = () => {
     if (!user?.profileId) { setLoading(false); return; }
@@ -34,6 +61,7 @@ export default function CustomerProfile() {
 
   useEffect(load, [user]);
 
+  // ── profile handlers ──
   const startEdit = () => { setProfileMsg(null); setEditing(true); };
   const cancelEdit = () => {
     setProfileForm({ name: customer.name, phone: customer.phone, licenseId: customer.licenseId || '' });
@@ -44,10 +72,16 @@ export default function CustomerProfile() {
     if (!profileForm.name.trim() || !profileForm.phone.trim()) return;
     setSavingProfile(true);
     try {
-      await updateCustomer(customer.id, profileForm);
+      const updated = await updateCustomer(customer.id, profileForm);
+      // updated is null when server returns 204 (old build); re-fetch as fallback
+      if (updated) {
+        setCustomer(updated);
+      } else {
+        const refreshed = await getCustomerById(user.profileId);
+        setCustomer(refreshed);
+      }
       setProfileMsg({ type: 'success', text: 'Profile updated successfully.' });
       setEditing(false);
-      load();
     } catch (err) {
       setProfileMsg({ type: 'error', text: err?.message || 'Failed to update profile.' });
     } finally {
@@ -55,6 +89,7 @@ export default function CustomerProfile() {
     }
   };
 
+  // ── add vehicle handlers ──
   const saveVehicle = async () => {
     if (!vehicleForm.vehicleType.trim() || !vehicleForm.plateNo.trim()) {
       setVehicleError('Vehicle type and plate number are required.');
@@ -72,6 +107,7 @@ export default function CustomerProfile() {
       });
       setShowAddVehicle(false);
       setVehicleForm(EMPTY_VEHICLE);
+      showVehicleMsg('success', 'Vehicle added successfully.');
       load();
     } catch (err) {
       setVehicleError(err?.message || 'Failed to add vehicle.');
@@ -80,13 +116,53 @@ export default function CustomerProfile() {
     }
   };
 
+  // ── edit vehicle handlers ──
+  const startEditVehicle = (v) => {
+    setVehicleEditError(null);
+    setVehicleMsg(null);
+    setEditingVehicleId(v.id);
+    setVehicleEditForm({
+      vehicleType: v.vehicleType,
+      plateNo: v.plateNo,
+      registrationDate: v.registrationDate ? v.registrationDate.split('T')[0] : '',
+    });
+  };
+  const cancelEditVehicle = () => { setEditingVehicleId(null); setVehicleEditError(null); };
+
+  const saveVehicleEdit = async (vehicleId) => {
+    if (!vehicleEditForm.vehicleType.trim() || !vehicleEditForm.plateNo.trim()) {
+      setVehicleEditError('Vehicle type and plate number are required.');
+      return;
+    }
+    setSavingVehicleEdit(true);
+    setVehicleEditError(null);
+    try {
+      await updateVehicle(customer.id, vehicleId, {
+        vehicleType: vehicleEditForm.vehicleType.trim(),
+        plateNo: vehicleEditForm.plateNo.trim(),
+        registrationDate: vehicleEditForm.registrationDate
+          ? new Date(vehicleEditForm.registrationDate + 'T00:00:00Z').toISOString()
+          : null,
+      });
+      setEditingVehicleId(null);
+      showVehicleMsg('success', 'Vehicle updated successfully.');
+      load();
+    } catch (err) {
+      setVehicleEditError(err?.message || 'Failed to update vehicle.');
+    } finally {
+      setSavingVehicleEdit(false);
+    }
+  };
+
+  // ── remove vehicle handler ──
   const deleteVehicle = async (vehicleId) => {
+    setVehicleMsg(null);
     setRemovingId(vehicleId);
     try {
       await removeVehicle(customer.id, vehicleId);
       load();
-    } catch {
-      // silently ignore
+    } catch (err) {
+      showVehicleMsg('error', err?.message || 'Failed to remove vehicle.');
     } finally {
       setRemovingId(null);
     }
@@ -110,7 +186,7 @@ export default function CustomerProfile() {
     <div className="space-y-6 page-enter">
       <PageHeader eyebrow="Customer" title="My Profile" subtitle="Manage your personal details and registered vehicles." />
 
-      {/* Profile card */}
+      {/* ── Profile card ── */}
       <div className="dash-card p-6">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
@@ -185,10 +261,10 @@ export default function CustomerProfile() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
             {[
-              ['Full Name',  customer.name],
-              ['Phone',      customer.phone],
-              ['License ID', customer.licenseId || '—'],
-              ['Tier',       customer.tier],
+              ['Full Name',   customer.name],
+              ['Phone',       customer.phone],
+              ['License ID',  customer.licenseId || '—'],
+              ['Tier',        customer.tier],
               ['Total Spent', `NPR ${Number(customer.totalSpent).toLocaleString()}`],
               ['Member Since', customer.joinDate || '—'],
             ].map(([label, value]) => (
@@ -201,7 +277,7 @@ export default function CustomerProfile() {
         )}
       </div>
 
-      {/* Vehicles card */}
+      {/* ── Vehicles card ── */}
       <div className="dash-card p-6">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
@@ -210,20 +286,24 @@ export default function CustomerProfile() {
             </div>
             <div>
               <p className="font-display font-bold text-foreground">My Vehicles</p>
-              <p className="text-xs text-muted-foreground">{customer.vehicles?.length || 0} vehicle{(customer.vehicles?.length || 0) !== 1 ? 's' : ''} registered</p>
+              <p className="text-xs text-muted-foreground">
+                {customer.vehicles?.length || 0} vehicle{(customer.vehicles?.length || 0) !== 1 ? 's' : ''} registered
+              </p>
             </div>
           </div>
-          <button onClick={() => { setVehicleError(null); setVehicleForm(EMPTY_VEHICLE); setShowAddVehicle(v => !v); }} className="btn-secondary gap-1.5">
+          <button
+            onClick={() => { setVehicleError(null); setVehicleForm(EMPTY_VEHICLE); setShowAddVehicle(v => !v); setEditingVehicleId(null); }}
+            className="btn-secondary gap-1.5"
+          >
             <Plus size={13} /> Add Vehicle
           </button>
         </div>
 
+        {/* Add vehicle form */}
         {showAddVehicle && (
           <div className="bg-muted/30 border border-border rounded-xl p-4 mb-4 space-y-3">
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">New Vehicle</p>
-            {vehicleError && (
-              <p className="text-xs text-red-600 dark:text-red-400">{vehicleError}</p>
-            )}
+            {vehicleError && <p className="text-xs text-red-600 dark:text-red-400">{vehicleError}</p>}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="form-label">Vehicle Type / Model <span className="text-red-500">*</span></label>
@@ -267,6 +347,18 @@ export default function CustomerProfile() {
           </div>
         )}
 
+        {/* Vehicle operation feedback banner */}
+        {vehicleMsg && (
+          <div className={`flex items-center gap-2 text-sm rounded-xl px-4 py-2.5 mb-4 border ${
+            vehicleMsg.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400'
+              : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-400'
+          }`}>
+            {vehicleMsg.type === 'success' ? <Check size={14} /> : <X size={14} />}
+            {vehicleMsg.text}
+          </div>
+        )}
+
         {!customer.vehicles?.length ? (
           <div className="text-center py-8 text-muted-foreground">
             <Car size={32} className="mx-auto mb-2 opacity-30" />
@@ -276,24 +368,92 @@ export default function CustomerProfile() {
         ) : (
           <div className="space-y-3">
             {customer.vehicles.map(v => (
-              <div key={v.id} className="flex items-center gap-4 bg-muted/20 border border-border rounded-xl px-4 py-3">
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center flex-shrink-0">
-                  <Car size={14} className="text-white" />
+              <div key={v.id} className="border border-border rounded-xl overflow-hidden">
+                {/* Vehicle row */}
+                <div className="flex items-center gap-4 bg-muted/20 px-4 py-3">
+                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center flex-shrink-0">
+                    <Car size={14} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-foreground text-sm">{v.vehicleType}</p>
+                    <p className="text-xs text-muted-foreground font-mono">{v.plateNo}</p>
+                    {v.registrationDate && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Registered: {v.registrationDate.split('T')[0]}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => editingVehicleId === v.id ? cancelEditVehicle() : startEditVehicle(v)}
+                      className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+                      title={editingVehicleId === v.id ? 'Cancel edit' : 'Edit vehicle'}
+                    >
+                      {editingVehicleId === v.id ? <X size={13} /> : <Edit2 size={13} />}
+                    </button>
+                    <button
+                      onClick={() => deleteVehicle(v.id)}
+                      disabled={removingId === v.id}
+                      className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-red-500 hover:border-red-300 transition-colors disabled:opacity-50 cursor-pointer"
+                      title="Remove vehicle"
+                    >
+                      {removingId === v.id
+                        ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                        : <Trash2 size={13} />}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-foreground text-sm">{v.vehicleType}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{v.plateNo}</p>
-                </div>
-                <button
-                  onClick={() => deleteVehicle(v.id)}
-                  disabled={removingId === v.id}
-                  className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-red-500 hover:border-red-300 transition-colors disabled:opacity-50 cursor-pointer"
-                  title="Remove vehicle"
-                >
-                  {removingId === v.id
-                    ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                    : <Trash2 size={13} />}
-                </button>
+
+                {/* Inline edit form */}
+                {editingVehicleId === v.id && (
+                  <div className="px-4 py-4 border-t border-border bg-muted/10 space-y-3">
+                    {vehicleEditError && (
+                      <p className="text-xs text-red-600 dark:text-red-400">{vehicleEditError}</p>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="form-label">Vehicle Type / Model <span className="text-red-500">*</span></label>
+                        <input
+                          type="text"
+                          value={vehicleEditForm.vehicleType}
+                          onChange={e => setVehicleEditForm(f => ({ ...f, vehicleType: e.target.value }))}
+                          className="form-input"
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label">Plate Number <span className="text-red-500">*</span></label>
+                        <input
+                          type="text"
+                          value={vehicleEditForm.plateNo}
+                          onChange={e => setVehicleEditForm(f => ({ ...f, plateNo: e.target.value }))}
+                          className="form-input"
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label">Registration Date</label>
+                        <input
+                          type="date"
+                          value={vehicleEditForm.registrationDate}
+                          onChange={e => setVehicleEditForm(f => ({ ...f, registrationDate: e.target.value }))}
+                          className="form-input"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <button onClick={cancelEditVehicle} className="btn-secondary">Cancel</button>
+                      <button
+                        onClick={() => saveVehicleEdit(v.id)}
+                        disabled={savingVehicleEdit}
+                        className="btn-primary disabled:opacity-50 gap-1.5"
+                      >
+                        {savingVehicleEdit
+                          ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          : <Save size={13} />}
+                        {savingVehicleEdit ? 'Saving…' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

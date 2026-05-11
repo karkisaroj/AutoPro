@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from './ThemeProvider';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -102,11 +102,27 @@ export default function DashboardLayout({ navItems = [], role = 'User', children
         {/* Profile pod */}
         <div className="m-3 p-3 rounded-xl border border-border bg-muted/30">
           <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${rc.gradient} flex items-center justify-center text-white text-xs font-black flex-shrink-0`}>
-              {userName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-            </div>
+            {role === 'Customer' ? (
+              <Link
+                to="/customer/profile"
+                className={`w-8 h-8 rounded-full bg-gradient-to-br ${rc.gradient} flex items-center justify-center text-white text-xs font-black flex-shrink-0 hover:opacity-80 transition-opacity`}
+                title="My Profile"
+              >
+                {userName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+              </Link>
+            ) : (
+              <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${rc.gradient} flex items-center justify-center text-white text-xs font-black flex-shrink-0`}>
+                {userName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-foreground truncate">{userName}</p>
+              {role === 'Customer' ? (
+                <Link to="/customer/profile" className="text-xs font-bold text-foreground truncate hover:text-primary transition-colors block" title="My Profile">
+                  {userName}
+                </Link>
+              ) : (
+                <p className="text-xs font-bold text-foreground truncate">{userName}</p>
+              )}
               <p className="text-[10px] text-muted-foreground">{role}</p>
             </div>
             <button
