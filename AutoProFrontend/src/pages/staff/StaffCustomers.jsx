@@ -328,10 +328,15 @@ export default function StaffCustomers() {
                                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center flex-shrink-0">
                                   <Car size={13} className="text-white" />
                                 </div>
-                                <div>
+                                <div className="flex-1 min-w-0">
                                   <p className="text-sm font-bold text-foreground">{v.vehicleType}</p>
                                   <p className="text-xs text-muted-foreground font-mono">{v.plateNo}</p>
                                 </div>
+                                {v.registrationDate && (
+                                  <p className="text-[10px] text-muted-foreground flex-shrink-0">
+                                    {new Date(v.registrationDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                  </p>
+                                )}
                               </div>
                             ))}
                           </div>

@@ -38,7 +38,11 @@ export default function StaffSearch() {
 
   return (
     <div className="space-y-6 page-enter">
-      <PageHeader eyebrow="Staff" title="Customer Search" subtitle="Find any customer by name, phone, license ID, or vehicle plate number." />
+      <PageHeader
+        eyebrow="Staff"
+        title="Customer Search"
+        subtitle={loading ? 'Loading customers…' : `Search across ${allCustomers.length} customer${allCustomers.length !== 1 ? 's' : ''} by name, phone, license ID, or vehicle plate.`}
+      />
 
       {/* Search panel */}
       <div className="dash-card p-5 space-y-4">
@@ -85,7 +89,9 @@ export default function StaffSearch() {
             <div className="dash-card p-10 text-center">
               <Search size={32} className="mx-auto text-muted-foreground mb-3" />
               <p className="font-bold text-foreground">No customers found</p>
-              <p className="text-xs text-muted-foreground mt-1">Try a different search term or type</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                No match for &ldquo;{query}&rdquo; by {SEARCH_TYPES.find(t => t.key === searchType)?.label}. Try a different term or search type.
+              </p>
             </div>
           ) : (
             results.map(c => (

@@ -1,10 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, FileText, Cpu, Car, Clock, TrendingUp, Star, User, Package } from 'lucide-react';
+import { Calendar, FileText, Car, Clock, TrendingUp, Star, User, Package } from 'lucide-react';
 import { getCustomerById } from '../../services/customerService';
 import { getMyAppointments } from '../../services/appointmentService';
 import { useAuth } from '../../context/AuthContext';
 import { Spinner } from '../../components/ui/index';
+
+const TIER_ORDER  = ['Bronze', 'Silver', 'Gold', 'Platinum'];
+const TIER_THRESH = { Bronze: 0, Silver: 20000, Gold: 50000, Platinum: 100000 };
+const TIER_COLOR  = {
+  Bronze:   'from-orange-400 to-amber-500',
+  Silver:   'from-slate-400 to-slate-500',
+  Gold:     'from-amber-400 to-yellow-500',
+  Platinum: 'from-violet-500 to-purple-600',
+};
+
+function LoyaltyProgress({ tier, totalSpent }) {
+  const idx  = TIER_ORDER.indexOf(tier);
+  const next = TIER_ORDER[idx + 1];
+  if (!next) return (
+    <div className="mt-3 bg-white/10 rounded-xl p-3 text-xs text-white/90">
+      <span className="font-black">Platinum</span> — Top tier! You get loyalty discounts on every eligible purchase.
+    </div>
+  );
+  const from    = TIER_THRESH[tier];
+  const to      = TIER_THRESH[next];
+  const pct     = Math.min(100, Math.round(((totalSpent - from) / (to - from)) * 100));
+  const remaining = (to - totalSpent).toLocaleString();
+  return (
+    <div className="mt-3 bg-white/10 rounded-xl p-3 space-y-1.5">
+      <div className="flex justify-between text-[11px] text-white/80 font-semibold">
+        <span>{tier}</span><span>{next} in NPR {remaining}</span>
+      </div>
+      <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+        <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-[10px] text-white/60">{pct}% toward {next}</p>
+    </div>
+  );
+}
 
 const QUICK_LINKS = [
   { to: '/customer/appointments',  label: 'Book Appointment', icon: Calendar, desc: 'Schedule a new service visit',   color: 'emerald' },
@@ -52,9 +86,7 @@ export default function CustomerOverview() {
     .filter(a => ['Confirmed', 'Pending'].includes(a.status))
     .slice(0, 3);
 
-  const loyaltyDiscount = customer?.tier === 'Bronze' ? '0%' :
-    customer?.tier === 'Silver' ? '5%' :
-    customer?.tier === 'Gold' ? '10%' : '15%';
+  const loyaltyDiscount = customer?.totalSpent >= 5000 ? '10% on purchases ≥ NPR 5k' : 'Spend NPR 5,000+ per purchase';
 
   const nextAppt = upcomingAppts[0];
 
@@ -68,17 +100,26 @@ export default function CustomerOverview() {
   return (
     <div className="space-y-6 page-enter">
       {/* Welcome banner */}
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-6 text-white relative overflow-hidden">
+      <div className={`bg-gradient-to-r ${TIER_COLOR[customer?.tier] || TIER_COLOR.Bronze} rounded-2xl p-6 text-white relative overflow-hidden`}>
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, white 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
         <div className="relative">
-          <p className="text-white/80 text-sm font-semibold">Welcome back,</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-2 py-0.5 rounded-full">
+              {customer?.tier || 'Bronze'} Member
+            </span>
+          </div>
           <h1 className="text-2xl font-display font-black">{customer?.name || user?.name} 👋</h1>
-          {customer?.vehicles?.[0] && (
-            <div className="flex items-center gap-2 mt-2 text-white/80 text-sm">
-              <Car size={14} />
-              <span>{customer.vehicles[0].plateNo} — {customer.vehicles[0].vehicleType}</span>
+          {customer?.vehicles?.length > 0 && (
+            <div className="flex flex-wrap gap-3 mt-2">
+              {customer.vehicles.map(v => (
+                <div key={v.id} className="flex items-center gap-1.5 text-white/80 text-xs bg-white/10 px-2.5 py-1 rounded-full">
+                  <Car size={11} />
+                  <span>{v.plateNo} — {v.vehicleType}</span>
+                </div>
+              ))}
             </div>
           )}
+          {customer && <LoyaltyProgress tier={customer.tier} totalSpent={customer.totalSpent} />}
         </div>
       </div>
 
