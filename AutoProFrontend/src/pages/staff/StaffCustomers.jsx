@@ -43,6 +43,11 @@ export default function StaffCustomers() {
   const [formError, setFormError] = useState(null);
   const [banner,    setBanner]    = useState(null);
 
+  const [addVehicleFor, setAddVehicleFor] = useState(null);
+  const [vForm,   setVForm]   = useState({ vehicleType: '', plateNo: '' });
+  const [vError,  setVError]  = useState(null);
+  const [vSaving, setVSaving] = useState(false);
+
   useEffect(() => {
     getCustomers()
       .then(data => { setCustomers(data); setLoading(false); })
@@ -126,6 +131,31 @@ export default function StaffCustomers() {
       setFormError(err?.message || 'Registration failed. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveVehicle = async (customerId) => {
+    if (!vForm.vehicleType.trim() || !vForm.plateNo.trim()) {
+      setVError('Both vehicle type and plate number are required.');
+      return;
+    }
+    setVSaving(true);
+    setVError(null);
+    try {
+      await addVehicle(customerId, {
+        vehicleType: vForm.vehicleType.trim(),
+        plateNo:     vForm.plateNo.trim(),
+        registrationDate: new Date().toISOString(),
+      });
+      const refreshed = await getCustomers();
+      setCustomers(refreshed);
+      setAddVehicleFor(null);
+      setVForm({ vehicleType: '', plateNo: '' });
+      setBanner({ type: 'success', msg: 'Vehicle added successfully.' });
+    } catch (err) {
+      setVError(err?.message || 'Failed to add vehicle.');
+    } finally {
+      setVSaving(false);
     }
   };
 
@@ -305,6 +335,59 @@ export default function StaffCustomers() {
                               </div>
                             ))}
                           </div>
+                        )}
+
+                        {/* Add Vehicle inline form */}
+                        {addVehicleFor === c.id ? (
+                          <div className="mt-3 space-y-2 bg-card border border-border rounded-xl px-4 py-3">
+                            {vError && (
+                              <p className="text-[11px] text-red-600 dark:text-red-400 flex items-center gap-1">
+                                <X size={11} /> {vError}
+                              </p>
+                            )}
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
+                                type="text"
+                                value={vForm.vehicleType}
+                                onChange={e => setVForm(f => ({ ...f, vehicleType: e.target.value }))}
+                                placeholder="Toyota Corolla 2019"
+                                className="form-input text-xs py-1.5"
+                              />
+                              <input
+                                type="text"
+                                value={vForm.plateNo}
+                                onChange={e => setVForm(f => ({ ...f, plateNo: e.target.value }))}
+                                placeholder="BA 3 PA 8888"
+                                className="form-input text-xs py-1.5"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => saveVehicle(c.id)}
+                                disabled={vSaving}
+                                className="btn-primary text-xs py-1.5 flex-1 justify-center"
+                              >
+                                {vSaving
+                                  ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                  : <Check size={12} />
+                                }
+                                {vSaving ? 'Saving…' : 'Save Vehicle'}
+                              </button>
+                              <button
+                                onClick={() => { setAddVehicleFor(null); setVError(null); }}
+                                className="btn-secondary text-xs py-1.5 px-3"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setAddVehicleFor(c.id); setVForm({ vehicleType: '', plateNo: '' }); setVError(null); }}
+                            className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                          >
+                            <Car size={12} /> + Add Vehicle
+                          </button>
                         )}
                       </div>
 

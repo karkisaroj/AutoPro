@@ -100,9 +100,18 @@ export default function StaffSearch() {
                     </div>
                     <div className="flex gap-4 mt-1 flex-wrap text-xs text-muted-foreground">
                       <span className="flex items-center gap-1"><Phone size={10} /> {c.phone}</span>
-                      {c.vehicles?.[0] && (
-                        <span className="flex items-center gap-1"><Car size={10} /> {c.vehicles[0].plateNo} — {c.vehicles[0].vehicleType}</span>
-                      )}
+                      {searchType === 'plate'
+                        ? c.vehicles?.map(v => (
+                            <span key={v.id} className="flex items-center gap-1 font-semibold text-primary">
+                              <Car size={10} /> {v.plateNo} — {v.vehicleType}
+                            </span>
+                          ))
+                        : c.vehicles?.[0] && (
+                            <span className="flex items-center gap-1">
+                              <Car size={10} /> {c.vehicles[0].plateNo} — {c.vehicles[0].vehicleType}
+                            </span>
+                          )
+                      }
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
