@@ -15,6 +15,7 @@ public class CustomerService : ICustomerService
         var query = _db.Customers
             .Include(c => c.User)
             .Include(c => c.Vehicles)
+            .AsNoTracking()
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -37,6 +38,7 @@ public class CustomerService : ICustomerService
         var customer = await _db.Customers
             .Include(c => c.User)
             .Include(c => c.Vehicles)
+            .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == id);
         return customer == null ? null : MapToResponse(customer);
     }
@@ -72,17 +74,20 @@ public class CustomerService : ICustomerService
         return (MapToResponse(customer), false);
     }
 
-    public async Task<bool> UpdateAsync(int id, UpdateCustomerRequest req)
+    public async Task<(CustomerResponse? response, bool notFound)> UpdateAsync(int id, UpdateCustomerRequest req)
     {
-        var customer = await _db.Customers.FindAsync(id);
-        if (customer == null) return false;
+        var customer = await _db.Customers
+            .Include(c => c.User)
+            .Include(c => c.Vehicles)
+            .FirstOrDefaultAsync(c => c.Id == id);
+        if (customer == null) return (null, true);
 
-        if (req.Name != null) customer.Name = req.Name;
-        if (req.Phone != null) customer.Phone = req.Phone;
-        if (req.LicenseId != null) customer.LicenseId = req.LicenseId;
+        if (!string.IsNullOrWhiteSpace(req.Name))     customer.Name      = req.Name.Trim();
+        if (!string.IsNullOrWhiteSpace(req.Phone))    customer.Phone     = req.Phone.Trim();
+        if (req.LicenseId != null)                    customer.LicenseId = req.LicenseId.Trim();
 
         await _db.SaveChangesAsync();
-        return true;
+        return (MapToResponse(customer), false);
     }
 
     public async Task<List<SaleResponse>> GetHistoryAsync(int customerId) =>
@@ -124,14 +129,15 @@ public class CustomerService : ICustomerService
         if (!await _db.Customers.AnyAsync(c => c.Id == customerId))
             return (null, true, false);
 
-        if (await _db.Vehicles.AnyAsync(v => v.PlateNo == req.PlateNo))
+        var normalizedPlate = req.PlateNo.Trim().ToUpperInvariant();
+        if (await _db.Vehicles.AnyAsync(v => v.PlateNo == normalizedPlate))
             return (null, false, true);
 
         var vehicle = new Vehicle
         {
             CustomerId = customerId,
-            VehicleType = req.VehicleType,
-            PlateNo = req.PlateNo,
+            VehicleType = req.VehicleType.Trim(),
+            PlateNo = normalizedPlate,
             RegistrationDate = req.RegistrationDate.HasValue
                 ? DateTime.SpecifyKind(req.RegistrationDate.Value, DateTimeKind.Utc)
                 : null
@@ -148,14 +154,51 @@ public class CustomerService : ICustomerService
         }, false, false);
     }
 
-    public async Task<bool> RemoveVehicleAsync(int customerId, int vehicleId)
+    public async Task<(VehicleResponse? response, bool notFound, bool plateConflict, bool hasActiveAppointments)> UpdateVehicleAsync(int customerId, int vehicleId, UpdateVehicleRequest req)
     {
-        var vehicle = await _db.Vehicles.FirstOrDefaultAsync(v => v.Id == vehicleId && v.CustomerId == customerId);
-        if (vehicle == null) return false;
+        var vehicle = await _db.Vehicles
+            .FirstOrDefaultAsync(v => v.Id == vehicleId && v.CustomerId == customerId);
+        if (vehicle == null) return (null, true, false, false);
+
+        if (!string.IsNullOrWhiteSpace(req.PlateNo))
+        {
+            var normalizedPlate = req.PlateNo.Trim().ToUpperInvariant();
+            if (await _db.Vehicles.AnyAsync(v => v.PlateNo == normalizedPlate && v.Id != vehicleId))
+                return (null, false, true, false);
+            vehicle.PlateNo = normalizedPlate;
+        }
+
+        if (!string.IsNullOrWhiteSpace(req.VehicleType))
+            vehicle.VehicleType = req.VehicleType.Trim();
+
+        if (req.RegistrationDate.HasValue)
+            vehicle.RegistrationDate = DateTime.SpecifyKind(req.RegistrationDate.Value, DateTimeKind.Utc);
+
+        await _db.SaveChangesAsync();
+
+        return (new VehicleResponse
+        {
+            Id = vehicle.Id,
+            VehicleType = vehicle.VehicleType,
+            PlateNo = vehicle.PlateNo,
+            RegistrationDate = vehicle.RegistrationDate
+        }, false, false, false);
+    }
+
+    public async Task<(bool success, bool notFound, bool hasActiveAppointments)> RemoveVehicleAsync(int customerId, int vehicleId)
+    {
+        var vehicle = await _db.Vehicles
+            .Include(v => v.Appointments)
+            .FirstOrDefaultAsync(v => v.Id == vehicleId && v.CustomerId == customerId);
+        if (vehicle == null) return (false, true, false);
+
+        var hasActive = vehicle.Appointments
+            .Any(a => a.Status == "Pending" || a.Status == "Confirmed");
+        if (hasActive) return (false, false, true);
 
         _db.Vehicles.Remove(vehicle);
         await _db.SaveChangesAsync();
-        return true;
+        return (true, false, false);
     }
 
     public async Task<int?> GetCustomerIdByUserIdAsync(int userId)
