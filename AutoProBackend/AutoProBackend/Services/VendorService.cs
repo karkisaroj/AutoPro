@@ -58,14 +58,18 @@ public class VendorService : IVendorService
         return true;
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<(bool found, bool inUse)> DeleteAsync(int id)
     {
         var vendor = await _db.Vendors.FindAsync(id);
-        if (vendor == null) return false;
+        if (vendor == null) return (false, false);
+
+        bool inUse = await _db.Parts.AnyAsync(p => p.VendorId == id)
+                  || await _db.PurchaseOrders.AnyAsync(po => po.VendorId == id);
+        if (inUse) return (true, true);
 
         _db.Vendors.Remove(vendor);
         await _db.SaveChangesAsync();
-        return true;
+        return (true, false);
     }
 
     public async Task<bool?> ToggleStatusAsync(int id)
