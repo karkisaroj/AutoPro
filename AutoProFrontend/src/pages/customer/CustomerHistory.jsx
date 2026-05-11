@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, ChevronDown, ChevronUp, Download, Search } from 'lucide-react';
+import { FileText, ChevronDown, ChevronUp, Download, Search, TrendingUp, Tag, Receipt } from 'lucide-react';
 import { PageHeader, StatusBadge, Spinner } from '../../components/ui/index';
 import { useAuth } from '../../context/AuthContext';
 import { getCustomerHistory } from '../../services/customerService';
@@ -54,16 +54,30 @@ export default function CustomerHistory() {
       {/* Totals strip */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Total Spent',    value: `NPR ${totalSpent.toLocaleString()}`  },
-          { label: 'Invoices',       value: history.length                         },
-          { label: 'Total Saved',    value: `NPR ${totalSaved.toLocaleString()}`  },
-        ].map(s => (
-          <div key={s.label} className="dash-card p-4 text-center">
-            <p className="text-xs text-muted-foreground font-semibold">{s.label}</p>
-            <p className="text-lg font-black text-foreground mt-0.5">{s.value}</p>
-          </div>
-        ))}
+          { label: 'Total Spent',  value: `NPR ${totalSpent.toLocaleString()}`, icon: TrendingUp, iconBg: 'from-blue-500 to-indigo-600'   },
+          { label: 'Invoices',     value: history.length,                        icon: Receipt,    iconBg: 'from-violet-500 to-purple-600' },
+          { label: 'Total Saved',  value: `NPR ${totalSaved.toLocaleString()}`,  icon: Tag,        iconBg: 'from-emerald-500 to-teal-600'  },
+        ].map(s => {
+          const Icon = s.icon;
+          return (
+            <div key={s.label} className="dash-card p-4 text-center">
+              <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${s.iconBg} flex items-center justify-center mx-auto mb-2`}>
+                <Icon size={14} className="text-white" />
+              </div>
+              <p className="text-xs text-muted-foreground font-semibold">{s.label}</p>
+              <p className={`text-lg font-black mt-0.5 ${s.label === 'Total Saved' && totalSaved > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>{s.value}</p>
+            </div>
+          );
+        })}
       </div>
+      {totalSaved > 0 && (
+        <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-2xl px-4 py-3">
+          <Tag size={15} className="text-emerald-600 flex-shrink-0" />
+          <p className="text-sm text-emerald-700 dark:text-emerald-400 font-semibold">
+            You've saved <strong>NPR {totalSaved.toLocaleString()}</strong> through loyalty discounts across {history.filter(h => h.loyaltyDiscount > 0).length} purchase{history.filter(h => h.loyaltyDiscount > 0).length !== 1 ? 's' : ''}.
+          </p>
+        </div>
+      )}
 
       {/* Search */}
       <div className="search-bar">
