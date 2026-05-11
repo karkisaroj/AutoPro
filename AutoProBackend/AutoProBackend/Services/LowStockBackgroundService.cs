@@ -14,6 +14,10 @@ public class LowStockBackgroundService(IServiceScopeFactory scopeFactory, ILogge
                 var count = await reports.SendLowStockAlertAsync();
                 if (count > 0)
                     logger.LogInformation("Low stock alert emailed for {Count} part(s).", count);
+
+                var reminded = await reports.SendOverdueRemindersAsync();
+                if (reminded > 0)
+                    logger.LogInformation("Overdue credit reminders sent to {Count} customer(s).", reminded);
             }
             catch (Exception ex)
             {
