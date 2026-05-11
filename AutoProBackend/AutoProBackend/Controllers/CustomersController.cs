@@ -44,7 +44,9 @@ public class CustomersController : ControllerBase
         if (User.IsInRole("Customer") && await GetCustomerIdFromToken() != id)
             return Forbid();
 
-        return await _customers.UpdateAsync(id, req) ? NoContent() : NotFound();
+        var (response, notFound) = await _customers.UpdateAsync(id, req);
+        if (notFound) return NotFound();
+        return Ok(response);
     }
 
     [HttpGet("{id}/history")]
@@ -68,13 +70,31 @@ public class CustomersController : ControllerBase
         return Created(string.Empty, response);
     }
 
+    [HttpPut("{id}/vehicles/{vehicleId}")]
+    public async Task<IActionResult> UpdateVehicle(int id, int vehicleId, [FromBody] UpdateVehicleRequest req)
+    {
+        if (User.IsInRole("Customer") && await GetCustomerIdFromToken() != id)
+            return Forbid();
+
+        var (response, notFound, plateConflict, hasActiveAppointments) =
+            await _customers.UpdateVehicleAsync(id, vehicleId, req);
+
+        if (notFound)               return NotFound();
+        if (plateConflict)          return Conflict(new { message = "Plate number already registered" });
+        if (hasActiveAppointments)  return Conflict(new { message = "Cannot update a vehicle with active appointments" });
+        return Ok(response);
+    }
+
     [HttpDelete("{id}/vehicles/{vehicleId}")]
     public async Task<IActionResult> RemoveVehicle(int id, int vehicleId)
     {
         if (User.IsInRole("Customer") && await GetCustomerIdFromToken() != id)
             return Forbid();
 
-        return await _customers.RemoveVehicleAsync(id, vehicleId) ? NoContent() : NotFound();
+        var (success, notFound, hasActiveAppointments) = await _customers.RemoveVehicleAsync(id, vehicleId);
+        if (notFound)              return NotFound();
+        if (hasActiveAppointments) return Conflict(new { message = "Cannot remove a vehicle with active appointments" });
+        return NoContent();
     }
 
     private async Task<int?> GetCustomerIdFromToken()

@@ -37,8 +37,13 @@ public class CreateCustomerRequest
 
 public class UpdateCustomerRequest
 {
+    [MinLength(1), MaxLength(100)]
     public string? Name { get; set; }
+
+    [MaxLength(20)]
     public string? Phone { get; set; }
+
+    [MaxLength(50)]
     public string? LicenseId { get; set; }
 }
 
@@ -52,11 +57,22 @@ public class VehicleResponse
 
 public class AddVehicleRequest
 {
-    [Required]
+    [Required, MinLength(1), MaxLength(100)]
     public string VehicleType { get; set; } = string.Empty;
 
-    [Required]
+    [Required, MinLength(1), MaxLength(20)]
     public string PlateNo { get; set; } = string.Empty;
+
+    public DateTime? RegistrationDate { get; set; }
+}
+
+public class UpdateVehicleRequest
+{
+    [MinLength(1), MaxLength(100)]
+    public string? VehicleType { get; set; }
+
+    [MinLength(1), MaxLength(20)]
+    public string? PlateNo { get; set; }
 
     public DateTime? RegistrationDate { get; set; }
 }
