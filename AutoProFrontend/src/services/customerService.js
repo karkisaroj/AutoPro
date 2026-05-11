@@ -42,11 +42,21 @@ export const updateCustomer = (id, data) =>
       phone: data.phone,
       licenseId: data.licenseId,
     }),
-  }).then(() => ({ ...data, id }));
+  }).then(res => res ? adapt(res) : null);
 
 export const addVehicle = (customerId, data) =>
   apiFetch(`/api/customers/${customerId}/vehicles`, {
     method: 'POST',
+    body: JSON.stringify({
+      vehicleType: data.vehicleType,
+      plateNo: data.plateNo,
+      registrationDate: data.registrationDate,
+    }),
+  });
+
+export const updateVehicle = (customerId, vehicleId, data) =>
+  apiFetch(`/api/customers/${customerId}/vehicles/${vehicleId}`, {
+    method: 'PUT',
     body: JSON.stringify({
       vehicleType: data.vehicleType,
       plateNo: data.plateNo,
